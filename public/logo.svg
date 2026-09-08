@@ -1,0 +1,18 @@
+<svg width="148" height="32" viewBox="0 0 148 32" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Raycode">
+  <!-- Icon -->
+  <g>
+    <rect width="32" height="32" rx="8" fill="url(#g)"/>
+    <rect x="0.5" y="0.5" width="31" height="31" rx="7.5" stroke="white" stroke-opacity="0.14"/>
+    <path d="M2 8 C2 4.686 4.686 2 8 2 H24 C27.314 2 30 4.686 30 8 V12 C30 8 28 6 24 6 H8 C4 6 2 8 2 12 V8Z" fill="white" fill-opacity="0.10"/>
+    <text x="16" y="20.2" text-anchor="middle" font-family="JetBrains Mono, ui-monospace, monospace" font-size="13.5" font-weight="800" letter-spacing="-0.6" fill="white">&lt;/&gt;</text>
+  </g>
+  <!-- Text -->
+  <text x="42" y="22" font-family="JetBrains Mono, Inter, ui-monospace, sans-serif" font-size="17.5" font-weight="700" letter-spacing="-0.6" fill="#0f172a">ray<tspan fill="#2563eb">code</tspan></text>
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="55%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+  </defs>
+</svg>
