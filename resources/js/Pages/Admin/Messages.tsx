@@ -8,6 +8,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown, Inbox, MailOpen, SendHorizonal, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from '@inertiajs/react';
+import { useConfirm } from '@/Components/useConfirm';
 
 interface Thread {
     id: number;
@@ -173,9 +174,15 @@ function ThreadCard({ thread, open, onToggle }: { thread: Thread; open: boolean;
 }
 
 function ContactCard({ contact }: { contact: ContactMessageRow }) {
+    const { confirm } = useConfirm();
     const markRead = () => router.patch(R.adminContactsRead(contact.id), {}, { preserveScroll: true });
-    const destroy = () => {
-        if (confirm(`Hapus pesan dari ${contact.name}?`)) {
+    const destroy = async () => {
+        if (await confirm({
+            title: `Hapus Pesan Kontak`,
+            description: `Hapus pesan kontak dari "${contact.name}" (${contact.email})? Tindakan ini tidak dapat dibatalkan.`,
+            variant: 'danger',
+            confirmLabel: 'Ya, Hapus Pesan',
+        })) {
             router.delete(R.adminContactsDestroy(contact.id), { preserveScroll: true });
         }
     };

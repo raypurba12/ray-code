@@ -120,7 +120,7 @@ class HomepageController extends Controller
         // Handle JSON fields - encode arrays as JSON strings
         $jsonFields = [
             'hero_socials', 'hero_perks', 'hero_stats', 'hero_code_lines',
-            'marquee_stack', 'process_steps', 'why_points'
+            'marquee_stack', 'process_steps', 'why_points',
         ];
 
         foreach ($validated as $key => $value) {
@@ -164,7 +164,7 @@ class HomepageController extends Controller
                 ['icon' => 'braces', 'value' => 5, 'suffix' => '+', 'label' => 'Teknologi'],
                 ['icon' => 'shield-check', 'value' => 100, 'suffix' => '%', 'label' => 'Responsif'],
             ],
-            'hero_image_src' => '/images/pp.png',
+            'hero_image_src' => '/images/pp-800.webp',
             'hero_image_alt' => 'Developer Raycode sedang coding di laptop',
             'hero_code_lines' => [
                 '$ raycode new project --client=you',
@@ -241,19 +241,25 @@ class HomepageController extends Controller
     public static function getHomepageSettings(): array
     {
         $defaults = static::defaults();
+        // satu query untuk semua key — tanpa ubah desain/animasi, potong 30 query → 1
+        try {
+            $all = Setting::whereIn('key', array_keys($defaults))->pluck('value', 'key');
+        } catch (\Throwable $e) {
+            $all = collect();
+        }
         $result = [];
-
         foreach ($defaults as $key => $default) {
+            $raw = $all->get($key);
+            if ($raw === null) {
+                $result[$key] = $default;
+
+                continue;
+            }
             if (is_array($default)) {
-                $raw = Setting::get($key, null);
-                if ($raw === null) {
-                    $result[$key] = $default;
-                } else {
-                    $decoded = json_decode($raw, true);
-                    $result[$key] = is_array($decoded) ? $decoded : $default;
-                }
+                $decoded = json_decode($raw, true);
+                $result[$key] = is_array($decoded) ? $decoded : $default;
             } else {
-                $result[$key] = Setting::get($key, $default);
+                $result[$key] = $raw;
             }
         }
 

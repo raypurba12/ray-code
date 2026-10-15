@@ -3,6 +3,7 @@ import { R } from '@/lib/routes';
 import { formatIDR } from '@/lib/utils';
 import { ServiceIcon } from '@/lib/icons';
 import { PublicLayout } from '@/Components/layout/PublicLayout';
+import { SeoHead } from '@/Components/SeoHead';
 import { Reveal } from '@/Components/Reveal';
 import { ButtonLink, Eyebrow } from '@/Components/ui';
 import { ArrowUpRight, Check, Clock } from 'lucide-react';
@@ -10,6 +11,10 @@ import { ArrowUpRight, Check, Clock } from 'lucide-react';
 export default function Reguler({ services }: { services: Service[] }) {
     return (
         <PublicLayout>
+            <SeoHead
+                title="Layanan Reguler & Spesialisasi"
+                description="Enam layanan inti pengembangan web, web app, debugging, dan dukungan berkelanjutan dari Raycode Studio."
+            />
             <section className="relative overflow-hidden pt-17">
                 <div className="bg-grid mask-fade-y pointer-events-none absolute inset-0" aria-hidden />
                 <div className="relative mx-auto max-w-7xl px-5 pt-16 pb-14 lg:px-8 lg:pt-24">
@@ -42,7 +47,7 @@ function ServiceCard({ service, index }: { service: Service; index: number }) {
     return (
         <a
             href={R.servicesShow(service.slug)}
-            className="group flex h-full flex-col rounded-2xl border border-line bg-card p-8 shadow-[0_1px_3px_rgb(15_23_42/0.04)] transition-all duration-300 hover:-translate-y-1.5 hover:border-brand-200 hover:shadow-[0_20px_44px_-18px_rgb(37_99_235/0.22)] dark:shadow-[inset_0_1px_0_rgb(255_255_255/0.03)] dark:hover:border-brand-500/40"
+            className="service-card-hover group relative flex h-full flex-col rounded-2xl border border-line bg-card p-8 shadow-[0_1px_3px_rgb(15_23_42/0.04)] overflow-hidden"
         >
             <div className="flex items-start justify-between">
                 <span className="font-mono text-sm font-bold text-slate-200 transition-colors group-hover:text-brand-300 dark:text-slate-700">

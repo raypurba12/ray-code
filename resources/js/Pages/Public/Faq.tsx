@@ -2,6 +2,7 @@ import type { Faq, Testimonial } from '@/types';
 import { R } from '@/lib/routes';
 import { cn } from '@/lib/utils';
 import { PublicLayout } from '@/Components/layout/PublicLayout';
+import { SeoHead } from '@/Components/SeoHead';
 import { Reveal } from '@/Components/Reveal';
 import { ButtonLink, Eyebrow, Stars } from '@/Components/ui';
 import {
@@ -24,8 +25,27 @@ export default function Faq({ faqs, testimonials }: Props) {
 
     const visible = activeCategory === 'All' ? faqs : faqs.filter((f) => f.category === activeCategory);
 
+    const faqSchema = {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: faqs.map((f) => ({
+            '@type': 'Question',
+            name: f.question,
+            acceptedAnswer: { '@type': 'Answer', text: f.answer },
+        })),
+    };
+
     return (
         <PublicLayout>
+            <SeoHead
+                title="Pertanyaan Umum (FAQ)"
+                description="Jawaban atas pertanyaan yang sering diajukan mengenai pengerjaan proyek, garansi perbaikan bug, pembayaran, dan sesi konsultasi."
+                breadcrumbs={[
+                    { name: 'Home', item: '/' },
+                    { name: 'FAQ', item: '/faq' },
+                ]}
+                jsonLd={faqSchema}
+            />
             <section className="relative overflow-hidden pt-17">
                 <div className="bg-grid mask-fade-y pointer-events-none absolute inset-0" aria-hidden />
                 <div className="relative mx-auto max-w-3xl px-5 pt-16 pb-10 text-center lg:px-8 lg:pt-24">

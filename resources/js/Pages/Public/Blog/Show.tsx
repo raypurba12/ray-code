@@ -2,6 +2,7 @@ import type { BlogPost } from '@/types';
 import { R } from '@/lib/routes';
 import { formatDate } from '@/lib/utils';
 import { PublicLayout } from '@/Components/layout/PublicLayout';
+import { SeoHead } from '@/Components/SeoHead';
 import { Reveal } from '@/Components/Reveal';
 import { Badge } from '@/Components/ui';
 import { Link } from '@inertiajs/react';
@@ -13,8 +14,38 @@ interface Props {
 }
 
 export default function BlogShow({ post, related }: Props) {
+    const blogSchema = {
+        '@context': 'https://schema.org',
+        '@type': 'BlogPosting',
+        headline: post.title,
+        description: post.excerpt,
+        image: post.cover_url || undefined,
+        datePublished: post.published_at || undefined,
+        author: { '@type': 'Person', name: post.author?.name ?? 'Raycode Studio' },
+        publisher: {
+            '@type': 'Organization',
+            name: 'Raycode Studio',
+            logo: { '@type': 'ImageObject', url: 'https://raycode.dev/ray.png' },
+        },
+        mainEntityOfPage: `https://raycode.dev/blog/${post.slug}`,
+    };
+
     return (
         <PublicLayout>
+            <SeoHead
+                title={post.title}
+                description={post.excerpt}
+                image={post.cover_url || undefined}
+                type="article"
+                publishedAt={post.published_at || undefined}
+                author={post.author?.name}
+                breadcrumbs={[
+                    { name: 'Home', item: '/' },
+                    { name: 'Blog', item: '/blog' },
+                    { name: post.title, item: `/blog/${post.slug}` },
+                ]}
+                jsonLd={blogSchema}
+            />
             <article className="mx-auto max-w-3xl px-5 pt-16 pb-16 lg:px-8 lg:pt-24">
                 <Reveal>
                     <Link href={R.blogIndex} className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">

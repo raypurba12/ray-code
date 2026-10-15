@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import '../css/app.css';
 import { LanguageProvider } from './lib/i18n';
+import { ConfirmProvider } from './Components/useConfirm';
 
 const pages = import.meta.glob('./Pages/**/*.tsx');
 
@@ -74,9 +75,9 @@ createInertiaApp({
         if (!el) return;
         const root: Root = createRoot(el);
         root.render(
-            <LanguageProvider>
+            <ConfirmProvider><LanguageProvider>
                 <App {...props} />
-            </LanguageProvider>,
+            </LanguageProvider></ConfirmProvider>,
         );
     },
     progress: {

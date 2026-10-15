@@ -336,24 +336,7 @@ export default function Error({ status, message }: { status: number; message?: s
                                     </button>
                                 </motion.form>
 
-                                {/* game teaser: pusing ngoding -> hancurin dulu */}
-                                <motion.div
-                                    initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: 0.52, duration: 0.5 }}
-                                    className="mt-3 grid max-w-md grid-cols-2 gap-2"
-                                >
-                                    <a href="/campus-adventure" className="flex items-center gap-2.5 rounded-xl border border-violet-300/30 bg-gradient-to-r from-violet-600 to-indigo-600 px-3 py-3 text-white shadow-[0_8px_24px_-12px_rgb(124_58_237/0.5)] transition hover:-translate-y-0.5">
-                                        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white text-sm">🗺️</span>
-                                        <span className="min-w-0 flex-1 text-left"><span className="block text-xs font-black leading-tight">Adventure</span><span className="block text-[10px] leading-tight text-violet-100">Jelajah kampus</span></span>
-                                        <span className="text-xs">→</span>
-                                    </a>
-                                    <a href="/campus-smash" className="flex items-center gap-2.5 rounded-xl border border-amber-300/30 bg-gradient-to-r from-amber-400 to-orange-400 px-3 py-3 shadow-[0_8px_24px_-12px_rgb(251_146_60/0.6)] transition hover:-translate-y-0.5">
-                                        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-sm">🔨</span>
-                                        <span className="min-w-0 flex-1 text-left"><span className="block text-xs font-black leading-tight text-slate-900">Smash</span><span className="block text-[10px] leading-tight text-slate-900/70">Ancurin cepat</span></span>
-                                        <span className="text-xs text-slate-900">→</span>
-                                    </a>
-                                </motion.div>
+                                {/* quick portfolio links for 404 */}
                             </>
                         )}
                     </div>

@@ -88,11 +88,11 @@ export function LanguageSwitcher({ variant = 'default' }: { variant?: 'default' 
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="menu"
-        className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+        className="inline-flex items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white px-2 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:gap-2 sm:px-2.5"
       >
         <Flag locale={locale} size="sm" />
         <span className="hidden sm:inline">{LANGS[locale].short}</span>
-        <ChevronDown className={cn('size-3.5 shrink-0 text-slate-400 transition-transform', open && 'rotate-180')} />
+        <ChevronDown className={cn('hidden size-3.5 shrink-0 text-slate-400 transition-transform sm:block', open && 'rotate-180')} />
       </button>
 
       {open && (

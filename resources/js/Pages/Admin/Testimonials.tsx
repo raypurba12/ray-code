@@ -8,12 +8,14 @@ import { router } from '@inertiajs/react';
 import { Eye, EyeOff, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from '@inertiajs/react';
+import { useConfirm } from '@/Components/useConfirm';
 
 interface Props extends PageProps {
     testimonials: Testimonial[];
 }
 
 export default function AdminTestimonials({ testimonials }: Props) {
+    const { confirm } = useConfirm();
     const [modalOpen, setModalOpen] = useState(false);
     const { data, setData, post, processing, errors, reset } = useForm({
         name: '',
@@ -32,8 +34,13 @@ export default function AdminTestimonials({ testimonials }: Props) {
         router.patch(R.adminTestimonialsUpdate(t.id), { toggle_approved: true }, { preserveScroll: true });
     };
 
-    const destroy = (t: Testimonial) => {
-        if (confirm(`Hapus testimoni dari ${t.name}?`)) {
+    const destroy = async (t: Testimonial) => {
+        if (await confirm({
+            title: `Hapus Testimoni`,
+            description: `Hapus testimoni dari "${t.name}" (${t.company})? Tindakan ini tidak dapat dibatalkan.`,
+            variant: 'danger',
+            confirmLabel: 'Ya, Hapus Testimoni',
+        })) {
             router.delete(R.adminTestimonialsDestroy(t.id), { preserveScroll: true });
         }
     };

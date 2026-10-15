@@ -8,6 +8,7 @@ import { router } from '@inertiajs/react';
 import { useForm } from '@inertiajs/react';
 import { Blocks, Pencil, Plus, Search, Trash2, Layers, Sparkles } from 'lucide-react';
 import { useState, useMemo } from 'react';
+import { useConfirm } from '@/Components/useConfirm';
 
 interface JokiServiceRow {
     id: number;
@@ -68,7 +69,8 @@ const defaultCategories = [
     'Cybersecurity',
 ];
 
-export default function AdminJokiServices({ services, categories, filters, stats, header }: Props) {
+function JokiServicesInner({ services, categories, filters, stats, header }: Pick<Props, 'services' | 'categories' | 'filters' | 'stats' | 'header'>) {
+    const { confirm } = useConfirm();
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState<JokiServiceRow | null>(null);
     const [search, setSearch] = useState(filters.search ?? '');
@@ -136,8 +138,13 @@ export default function AdminJokiServices({ services, categories, filters, stats
         }
     };
 
-    const destroy = (row: JokiServiceRow) => {
-        if (confirm(`Hapus layanan "${row.title}"?`)) {
+    const destroy = async (row: JokiServiceRow) => {
+        if (await confirm({
+            title: `Hapus Layanan Joki`,
+            description: `Hapus layanan "${row.title}"? Layanan ini tidak akan lagi tampil di daftar publik.`,
+            variant: 'danger',
+            confirmLabel: 'Ya, Hapus Layanan',
+        })) {
             router.delete(`/admin/joki-services/${row.id}`, { preserveScroll: true });
         }
     };
@@ -152,7 +159,7 @@ export default function AdminJokiServices({ services, categories, filters, stats
     };
 
     return (
-        <AdminLayout title="Semua Layanan" description="Kelola 66+ layanan joki yang tampil di halaman /services — bilingual ID/EN, kategori, icon, logo, dan urutan">
+        <>
             <Card className="mb-6 p-6">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
@@ -179,7 +186,12 @@ export default function AdminJokiServices({ services, categories, filters, stats
                 </div>
             </Card>
 
-            <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+                <p className="font-bold">⚠️ Halaman deprecated — migrasi selesai 11 Sep 2026.</p>
+                <p className="mt-1">59 layanan joki sudah disalin ke <code className="rounded bg-white px-1 py-0.5 dark:bg-black/20">services[type=joki]</code>. Kelola ke depan via <a href={R.adminServices} className="underline font-semibold">Paket Layanan</a> (filter type=joki). Halaman ini akan dihapus Sprint 3.</p>
+            </div>
+
+            <div className="mt-6 mb-6 flex flex-wrap items-start justify-between gap-4">
                 <div className="flex items-center gap-3">
                     <Badge tone="slate">{stats.total} total</Badge>
                     <Badge tone="green">{stats.active} aktif</Badge>
@@ -270,6 +282,13 @@ export default function AdminJokiServices({ services, categories, filters, stats
                     </div>
                 </form>
             </Modal>
+        </>
+    );
+}
+export default function AdminJokiServices({ services, categories, filters, stats, header }: Props) {
+    return (
+        <AdminLayout title="Joki / Satuan (Deprecated)" description="⚠️ DEPRECATED — Data sudah dimigrasi ke Paket Layanan (services[type=joki]). Halaman ini read-only, kelola ke depan via Paket Layanan.">
+            <JokiServicesInner services={services} categories={categories} filters={filters} stats={stats} header={header} />
         </AdminLayout>
     );
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\EstimatorLead;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -37,6 +38,15 @@ class EstimatorController extends Controller
             'complexities' => $this->getComplexities(),
             'features' => $this->getFeatures(),
             'urgencies' => $this->getUrgencies(),
+            'leads' => EstimatorLead::with('service:id,title,slug')->latest()->take(50)->get(),
+            'leadsCount' => EstimatorLead::count(),
+        ]);
+    }
+
+    public function leads()
+    {
+        return Inertia::render('Admin/EstimatorLeads', [
+            'leads' => EstimatorLead::with('service:id,title,slug')->latest()->paginate(20),
         ]);
     }
 
@@ -69,7 +79,7 @@ class EstimatorController extends Controller
                 $base = $slug;
                 $c = 1;
                 while (in_array($slug, $seen, true)) {
-                    $slug = $base . '-' . $c++;
+                    $slug = $base.'-'.$c++;
                 }
                 $seen[] = $slug;
                 $validated[$group][$idx]['id'] = $slug;
@@ -89,8 +99,11 @@ class EstimatorController extends Controller
         $raw = Setting::get('estimator_complexities', null);
         if ($raw) {
             $decoded = json_decode($raw, true);
-            if (is_array($decoded) && count($decoded)) return $decoded;
+            if (is_array($decoded) && count($decoded)) {
+                return $decoded;
+            }
         }
+
         return $this->defaultComplexities;
     }
 
@@ -99,8 +112,11 @@ class EstimatorController extends Controller
         $raw = Setting::get('estimator_features', null);
         if ($raw) {
             $decoded = json_decode($raw, true);
-            if (is_array($decoded) && count($decoded)) return $decoded;
+            if (is_array($decoded) && count($decoded)) {
+                return $decoded;
+            }
         }
+
         return $this->defaultFeatures;
     }
 
@@ -109,8 +125,11 @@ class EstimatorController extends Controller
         $raw = Setting::get('estimator_urgencies', null);
         if ($raw) {
             $decoded = json_decode($raw, true);
-            if (is_array($decoded) && count($decoded)) return $decoded;
+            if (is_array($decoded) && count($decoded)) {
+                return $decoded;
+            }
         }
+
         return $this->defaultUrgencies;
     }
 }

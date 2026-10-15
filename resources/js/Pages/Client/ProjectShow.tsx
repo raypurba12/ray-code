@@ -2,9 +2,8 @@ import type { PageProps, Project } from '@/types';
 import { R } from '@/lib/routes';
 import { formatDate, formatIDR } from '@/lib/utils';
 import { ClientLayout } from '@/Components/layout/ClientLayout';
-import { ButtonLink, Card, StatusPill } from '@/Components/ui';
-import { Reveal } from '@/Components/Reveal';
-import { usePage } from '@inertiajs/react';
+import { ButtonLink, Card, StatusPill, Button, Input, Textarea } from '@/Components/ui';
+import { useForm } from '@inertiajs/react';
 import {
     CalendarDays,
     CircleCheck,
@@ -12,14 +11,23 @@ import {
     GitCommitHorizontal,
     ReceiptText,
     Wallet,
+    Download,
+    FileArchive,
+    Star,
+    Package,
 } from 'lucide-react';
+import { useState } from 'react';
 
 interface Props extends PageProps {
     project: Project & {
         service?: { id: number; title: string; slug: string; icon: string } | null;
         updates?: { id: number; title: string; notes: string | null; created_at: string }[];
         invoices?: { id: number; number: string; total: number; status: 'unpaid' | 'paid' | 'cancelled'; due_date: string | null }[];
+        files?: { id:number; file_name:string; size:number; version:number; created_at:string }[];
+        order_code?: string;
     };
+    canTestimonial: boolean;
+    hasTestimonial: boolean;
 }
 
 const timeline = [
@@ -30,13 +38,19 @@ const timeline = [
     { status: 'completed', label: 'Delivered 🎉' },
 ];
 
-export default function ProjectShow({ project }: Props) {
+export default function ProjectShow({ project, canTestimonial, hasTestimonial }: Props) {
     const currentIndex = Math.max(
         0,
         project.status === 'cancelled'
             ? 0
             : timeline.findIndex((t) => t.status === project.status),
     );
+
+    const testiForm = useForm({ content: '', rating: 5 });
+    const submitTesti = (e:React.FormEvent) => {
+        e.preventDefault();
+        testiForm.post(R.clientProjectTestimonial(project.id), { preserveScroll:true, onSuccess:()=> testiForm.reset() });
+    };
 
     return (
         <ClientLayout title={project.title}>
@@ -46,6 +60,7 @@ export default function ProjectShow({ project }: Props) {
                     <div className="flex flex-wrap items-center gap-3">
                         <h2 className="text-xl font-bold tracking-tight text-ink">{project.title}</h2>
                         <StatusPill status={project.status} />
+                        {project.order_code && <span className="rounded-full bg-slate-900 px-2.5 py-1 font-mono text-xs font-bold tracking-widest text-white dark:bg-white dark:text-slate-900">{project.order_code}</span>}
                     </div>
                     <p className="mt-1 text-sm text-ink-3">
                         {project.service?.title ?? 'Custom'} · ordered {formatDate(project.created_at)}
@@ -121,6 +136,37 @@ export default function ProjectShow({ project }: Props) {
                         )}
                     </Card>
 
+                    {/* Deliverables FR-7 — client download */}
+                    <Card className="p-6">
+                        <h3 className="flex items-center gap-2 font-semibold text-ink">
+                            <Package className="size-4 text-brand-600" /> Deliverables
+                            {project.files && project.files.length>0 && <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">{project.files.length} file</span>}
+                        </h3>
+                        {project.files && project.files.length>0 ? (
+                            <div className="mt-4 space-y-3">
+                                <ul className="space-y-2">
+                                    {project.files.map(f=> (
+                                        <li key={f.id} className="flex items-center justify-between rounded-xl border border-line bg-alt px-4 py-3">
+                                            <div className="min-w-0">
+                                                <p className="truncate text-sm font-semibold text-ink">{f.file_name} <span className="font-mono text-xs font-bold text-brand-600">v{f.version}</span></p>
+                                                <p className="font-mono text-xs text-ink-4">{(f.size/1024).toFixed(1)} KB · {formatDate(f.created_at)}</p>
+                                            </div>
+                                            <a href={R.clientProjectFileDownload(project.id, f.id)} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900">
+                                                <Download className="size-3.5"/> Download
+                                            </a>
+                                        </li>
+                                    ))}
+                                </ul>
+                                <a href={R.clientProjectFilesZip(project.id)} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm font-bold text-brand-700 hover:bg-brand-100 dark:border-brand-500/20 dark:bg-brand-500/10 dark:text-brand-300">
+                                    <FileArchive className="size-4"/> Download semua sebagai ZIP
+                                </a>
+                                <p className="text-center text-xs text-ink-4">Link download aman untuk akun kamu saja.</p>
+                            </div>
+                        ) : (
+                            <p className="mt-4 rounded-xl bg-alt px-4 py-6 text-center text-sm text-ink-3">Belum ada deliverable — admin akan upload saat progress berjalan.</p>
+                        )}
+                    </Card>
+
                     {/* Updates feed */}
                     <Card className="p-6">
                         <h3 className="flex items-center gap-2 font-semibold text-ink">
@@ -145,6 +191,29 @@ export default function ProjectShow({ project }: Props) {
                             </p>
                         )}
                     </Card>
+
+                    {/* Testimoni FR-8 */}
+                    {project.status==='completed' && (
+                        <Card className="p-6 border-amber-200 bg-amber-50/60 dark:border-amber-500/20 dark:bg-amber-500/10">
+                            <h3 className="flex items-center gap-2 font-semibold text-ink"><Star className="size-4 text-amber-500 fill-amber-500"/> {hasTestimonial ? 'Testimoni terkirim — terima kasih!' : canTestimonial ? 'Beri Testimoni' : 'Testimoni'}</h3>
+                            {canTestimonial ? (
+                                <form onSubmit={submitTesti} className="mt-4 space-y-3">
+                                    <div className="flex gap-1">
+                                        {[1,2,3,4,5].map(n=> (
+                                            <button key={n} type="button" onClick={()=>testiForm.setData('rating', n)} className={`size-8 rounded-full border ${testiForm.data.rating>=n?'bg-amber-400 border-amber-500 text-white':'bg-white dark:bg-slate-800 border-line'}`}>{n}</button>
+                                        ))}
+                                        <span className="ml-2 text-sm font-semibold text-ink">{testiForm.data.rating}/5</span>
+                                    </div>
+                                    <Textarea label="Cerita pengalamanmu (min 20 karakter)" rows={4} value={testiForm.data.content} onChange={e=>testiForm.setData('content', e.target.value)} error={testiForm.errors.content} required />
+                                    {testiForm.errors.rating && <p className="text-xs text-red-600">{testiForm.errors.rating}</p>}
+                                    <Button type="submit" disabled={testiForm.processing}>{testiForm.processing ? 'Mengirim...' : 'Kirim Testimoni'}</Button>
+                                    <p className="text-xs text-ink-4">Akan direview admin sebelum tampil di homepage.</p>
+                                </form>
+                            ) : hasTestimonial ? (
+                                <p className="mt-2 text-sm text-ink-3">Testimoni kamu sedang direview. Terima kasih sudah berbagi!</p>
+                            ) : null}
+                        </Card>
+                    )}
                 </div>
 
                 {/* Invoices sidebar */}

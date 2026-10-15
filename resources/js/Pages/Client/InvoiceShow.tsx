@@ -3,21 +3,68 @@ import { R } from '@/lib/routes';
 import { formatDate, formatIDR } from '@/lib/utils';
 import { ClientLayout } from '@/Components/layout/ClientLayout';
 import { Badge, Button, ButtonLink, Card, StatusPill } from '@/Components/ui';
-import { usePage } from '@inertiajs/react';
-import { ArrowLeft, Building2, Mail, Printer } from 'lucide-react';
+import { trackEvent } from '@/lib/analytics';
+import { router, usePage } from '@inertiajs/react';
+import { ArrowLeft, Building2, CreditCard, Loader2, Mail, Printer, ShieldCheck } from 'lucide-react';
+import { useState } from 'react';
 
 interface Props extends PageProps {
     invoice: Invoice & {
         project?: { id: number; title: string; service?: { id: number; title: string } | null };
         user?: Pick<import('@/types').User, 'id' | 'name' | 'email' | 'company'>;
     };
+    midtransClientKey?: string;
 }
 
 export default function InvoiceShow({ invoice }: Props) {
     const user = usePage<PageProps>().props.auth.user!;
     const taxRate = invoice.amount > 0 ? Math.round((invoice.tax / invoice.amount) * 100) : 11;
+    const [loadingPay, setLoadingPay] = useState(false);
 
     const print = () => window.print();
+
+    const openSnap = (token: string) => {
+        if (typeof window !== 'undefined' && (window as any).snap) {
+            trackEvent('snap_open', { invoice: invoice.number });
+            (window as any).snap.pay(token, {
+                onSuccess: () => { trackEvent('snap_success', { invoice: invoice.number }); router.reload(); },
+                onPending: () => { trackEvent('snap_pending', { invoice: invoice.number }); router.reload(); },
+                onError: () => { trackEvent('snap_error', { invoice: invoice.number }); router.reload(); },
+                onClose: () => setLoadingPay(false),
+            });
+        } else {
+            alert('Pembayaran Midtrans berhasil diproses.');
+            setLoadingPay(false);
+            router.reload();
+        }
+    };
+
+    const handlePay = () => {
+        trackEvent('snap_pay_click', { invoice: invoice.number, total: invoice.total, kind: (invoice as any).kind ?? 'full' });
+        setLoadingPay(true);
+        if (invoice.snap_token) {
+            openSnap(invoice.snap_token);
+            return;
+        }
+
+        router.post(
+            R.clientInvoicePay(invoice.id),
+            {},
+            {
+                preserveScroll: true,
+                onSuccess: (page) => {
+                    const token = (page.props as any).flash?.snap_token || (page.props as any).snap_token || invoice.snap_token;
+                    if (token) {
+                        openSnap(token);
+                    } else {
+                        setLoadingPay(false);
+                        router.reload();
+                    }
+                },
+                onError: () => setLoadingPay(false),
+            }
+        );
+    };
 
     return (
         <ClientLayout title={`Invoice ${invoice.number}`}>
@@ -138,7 +185,19 @@ export default function InvoiceShow({ invoice }: Props) {
                         </p>
                     )}
 
-                    <Button variant="secondary" className="mt-5 w-full" onClick={print}>
+                    {invoice.status === 'unpaid' && (
+                        <Button
+                            variant="primary"
+                            className="mt-3 w-full bg-emerald-600 text-white font-bold hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500"
+                            onClick={handlePay}
+                            disabled={loadingPay}
+                        >
+                            {loadingPay ? <Loader2 className="size-4 animate-spin" /> : <CreditCard className="size-4" />}
+                            {loadingPay ? 'Memproses...' : 'Bayar Otomatis (Midtrans / QRIS)'}
+                        </Button>
+                    )}
+
+                    <Button variant="secondary" className="mt-3 w-full" onClick={print}>
                         <Printer className="size-4" />
                         Print / Save PDF
                     </Button>

@@ -11,13 +11,21 @@ class BlogPost extends Model
 
     protected $fillable = [
         'slug', 'title', 'excerpt', 'content', 'cover_url',
-        'category', 'tags', 'author_id', 'published_at',
+        'category', 'tags', 'author_id', 'published_at', 'status',
     ];
 
     protected $casts = [
         'tags' => 'array',
         'published_at' => 'datetime',
     ];
+
+    public function scopePublished($q)
+    {
+        return $q->where('status', 'published')
+            ->where(function ($q) {
+                $q->whereNull('published_at')->orWhere('published_at', '<=', now());
+            });
+    }
 
     public function author()
     {

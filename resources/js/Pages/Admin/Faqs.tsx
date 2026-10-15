@@ -8,6 +8,7 @@ import { router } from '@inertiajs/react';
 import { Pencil, Plus, Trash2, HelpCircle, Filter } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from '@inertiajs/react';
+import { useConfirm } from '@/Components/useConfirm';
 
 interface Props extends PageProps {
     faqs: (Faq & { id: number; category: string; sort_order: number; is_active: boolean })[];
@@ -24,6 +25,7 @@ const emptyForm = {
 };
 
 export default function AdminFaqs({ faqs, categories, filters }: Props) {
+    const { confirm } = useConfirm();
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState<(Faq & { id: number }) | null>(null);
     const { data, setData, post, put, processing, errors, reset } = useForm(emptyForm);
@@ -55,8 +57,13 @@ export default function AdminFaqs({ faqs, categories, filters }: Props) {
         }
     };
 
-    const destroy = (faq: any) => {
-        if (confirm(`Hapus FAQ "${faq.question}"?`)) {
+    const destroy = async (faq: any) => {
+        if (await confirm({
+            title: `Hapus Pertanyaan FAQ`,
+            description: `Hapus FAQ "${faq.question}"? Pertanyaan ini tidak akan lagi tampil di halaman FAQ publik.`,
+            variant: 'danger',
+            confirmLabel: 'Ya, Hapus FAQ',
+        })) {
             router.delete(R.adminFaqsDestroy(faq.id), { preserveScroll: true });
         }
     };

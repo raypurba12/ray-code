@@ -111,9 +111,15 @@ class JokiServiceController extends Controller
         $count = 0;
         foreach ($services as $s) {
             $updates = [];
-            if (empty($s->title_en)) $updates['title_en'] = $this->translateIdToEn($s->title);
-            if (empty($s->desc_en)) $updates['desc_en'] = $this->translateIdToEn($s->desc);
-            if (empty($s->category_en)) $updates['category_en'] = $this->translateIdToEn($s->category);
+            if (empty($s->title_en)) {
+                $updates['title_en'] = $this->translateIdToEn($s->title);
+            }
+            if (empty($s->desc_en)) {
+                $updates['desc_en'] = $this->translateIdToEn($s->desc);
+            }
+            if (empty($s->category_en)) {
+                $updates['category_en'] = $this->translateIdToEn($s->category);
+            }
             if (! empty($updates)) {
                 $s->update($updates);
                 $count++;
@@ -125,7 +131,9 @@ class JokiServiceController extends Controller
         // header
         if (! Setting::get('joki_header_badge_en') || Setting::get('joki_header_badge_en') === Setting::get('joki_header_badge')) {
             $badge = Setting::get('joki_header_badge');
-            if ($badge) Setting::set('joki_header_badge_en', $this->translateIdToEn($badge));
+            if ($badge) {
+                Setting::set('joki_header_badge_en', $this->translateIdToEn($badge));
+            }
         }
 
         return back()->with('success', "Auto-translate selesai: {$count} layanan diperbarui.");
@@ -180,7 +188,7 @@ class JokiServiceController extends Controller
         $original = $validated['slug'];
         $counter = 1;
         while (JokiService::where('slug', $validated['slug'])->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))->exists()) {
-            $validated['slug'] = $original . '-' . $counter++;
+            $validated['slug'] = $original.'-'.$counter++;
         }
 
         if (! isset($validated['sort_order']) || $validated['sort_order'] === null) {
@@ -206,12 +214,15 @@ class JokiServiceController extends Controller
         if (empty($data['category_en'])) {
             $data['category_en'] = $this->translateIdToEn($data['category']);
         }
+
         return $data;
     }
 
     private function translateIdToEn(string $text): string
     {
-        if (trim($text) === '') return $text;
+        if (trim($text) === '') {
+            return $text;
+        }
         // jangan translate kategori yang sudah English atau kode
         $lower = mb_strtolower(trim($text));
         $skip = ['mobile development', 'web development', 'database & backend', 'devops & deployment', 'ai & machine learning', 'data science', 'game & multimedia', 'iot & hardware', 'networking', 'cybersecurity'];
@@ -233,6 +244,7 @@ class JokiServiceController extends Controller
         } catch (\Throwable $e) {
             // fallback
         }
+
         return $text;
     }
 }

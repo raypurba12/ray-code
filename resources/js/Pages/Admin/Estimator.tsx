@@ -9,13 +9,28 @@ interface Complexity { id: string; label: string; multiplier: number; desc: stri
 interface Feature { id: string; label: string; price: number }
 interface Urgency { id: string; label: string; multiplier: number }
 
+interface Lead {
+    id: number;
+    service: { id:number; title:string; slug:string } | null;
+    complexity: string;
+    features: string[];
+    urgency: string;
+    low_estimate: number;
+    high_estimate: number;
+    email: string | null;
+    wa: string | null;
+    ip: string | null;
+    created_at: string;
+}
 interface Props {
     complexities: Complexity[];
     features: Feature[];
     urgencies: Urgency[];
+    leads: Lead[];
+    leadsCount: number;
 }
 
-export default function AdminEstimator({ complexities: initComplexities, features: initFeatures, urgencies: initUrgencies }: Props) {
+export default function AdminEstimator({ complexities: initComplexities, features: initFeatures, urgencies: initUrgencies, leads, leadsCount }: Props) {
     const { data, setData, put, processing, errors } = useForm({
         complexities: initComplexities,
         features: initFeatures,
@@ -139,6 +154,34 @@ export default function AdminEstimator({ complexities: initComplexities, feature
                 </div>
                 <p className="text-center text-xs text-slate-400">Rumus: <span className="font-mono">((base * kompleksitas) + totalFitur) * urgensi</span> → low 0.9×, high 1.25×, pembulatan 100rb</p>
             </form>
+
+            {/* Leads PRD FR-6 */}
+            <Card className="mt-8 p-6">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-bold text-slate-900 dark:text-white">Leads Estimator — {leadsCount} total (50 terbaru)</h2>
+                    <a href="/admin/estimator-leads" className="text-xs font-semibold text-brand-600 hover:underline">Lihat semua →</a>
+                </div>
+                {leads.length === 0 ? (
+                    <p className="mt-3 text-sm text-slate-500">Belum ada lead. Estimator baru capture setelah frontend update.</p>
+                ) : (
+                    <div className="mt-4 overflow-x-auto">
+                        <table className="w-full text-left text-xs">
+                            <thead className="border-b text-slate-500"><tr><th className="py-2">Waktu</th><th>Layanan</th><th>Estimasi</th><th>Kontak</th><th>IP</th></tr></thead>
+                            <tbody>
+                                {leads.map(l=> (
+                                    <tr key={l.id} className="border-b border-slate-100 dark:border-white/5">
+                                        <td className="py-2 font-mono">{new Date(l.created_at).toLocaleString('id-ID')}</td>
+                                        <td className="py-2">{l.service?.title ?? '-'}</td>
+                                        <td className="py-2 font-mono">Rp {l.low_estimate.toLocaleString('id-ID')} — {l.high_estimate.toLocaleString('id-ID')}</td>
+                                        <td className="py-2">{[l.wa, l.email].filter(Boolean).join(' / ') || <span className="text-slate-400">anon</span>}</td>
+                                        <td className="py-2 font-mono text-slate-400">{l.ip ?? '-'}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </Card>
         </AdminLayout>
     );
 }
