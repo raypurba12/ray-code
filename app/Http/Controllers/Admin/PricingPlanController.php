@@ -63,11 +63,11 @@ class PricingPlanController extends Controller
         // Ensure unique slug (append counter if exists)
         $original = $validated['slug'];
         $counter = 1;
-        $existsCheck = fn($slug) => PricingPlan::where('slug', $slug)->when(isset($validated['id']), fn($q) => $q->where('id', '!=', $validated['id']))->exists();
+        $existsCheck = fn ($slug) => PricingPlan::where('slug', $slug)->when(isset($validated['id']), fn ($q) => $q->where('id', '!=', $validated['id']))->exists();
         // For update, need to exclude current id
         $currentId = request()->route('pricingPlan')?->id ?? request()->route('pricing_plan')?->id ?? null;
-        while (PricingPlan::where('slug', $validated['slug'])->when($currentId, fn($q) => $q->where('id', '!=', $currentId))->exists()) {
-            $validated['slug'] = $original . '-' . $counter++;
+        while (PricingPlan::where('slug', $validated['slug'])->when($currentId, fn ($q) => $q->where('id', '!=', $currentId))->exists()) {
+            $validated['slug'] = $original.'-'.$counter++;
         }
 
         return $validated;

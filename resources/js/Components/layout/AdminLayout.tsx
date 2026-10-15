@@ -27,8 +27,10 @@ import {
     X,
 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
-import { Toast } from '@/Components/Toast';
 import { ThemeToggle } from '@/Components/ThemeToggle';
+import { ToastProvider } from '@/Components/ToastProvider';
+import { ConfirmProvider } from '@/Components/useConfirm';
+import { AdminBreadcrumb } from '@/Components/AdminBreadcrumb';
 
 const navGroups: { title: string; items: { label: string; href: string; icon: typeof LayoutDashboard }[] }[] = [
     {
@@ -43,8 +45,8 @@ const navGroups: { title: string; items: { label: string; href: string; icon: ty
         title: 'Kelola Website',
         items: [
             { label: 'Halaman Depan', href: R.adminHomepage, icon: LayoutTemplate },
-            { label: 'Layanan', href: R.adminServices, icon: Sparkles },
-            { label: 'Semua Layanan', href: R.adminJokiServices, icon: LayoutGrid },
+            { label: 'Layanan (Package + Joki)', href: R.adminServices, icon: Sparkles },
+            { label: 'Joki Legacy (Redirect)', href: R.adminJokiServices, icon: LayoutGrid },
             { label: 'Portofolio', href: R.adminPortfolios, icon: Palette },
             { label: 'Paket Harga', href: R.adminPricingPlans, icon: BadgeDollarSign },
             { label: 'Estimator', href: R.adminEstimator, icon: Calculator },
@@ -66,7 +68,7 @@ const navGroups: { title: string; items: { label: string; href: string; icon: ty
     },
 ];
 
-export function AdminLayout({ title, description, actions, children }: { title?: string; description?: string; actions?: ReactNode; children: ReactNode }) {
+export function AdminLayout({ title, description, actions, children, breadcrumb }: { title?: string; description?: string; actions?: ReactNode; children: ReactNode; breadcrumb?: ReactNode }) {
     const { auth } = usePage<PageProps>().props;
     const [open, setOpen] = useState(false);
     const url = usePage().url;
@@ -74,81 +76,87 @@ export function AdminLayout({ title, description, actions, children }: { title?:
     const userEmail = auth?.user?.email ?? '';
 
     return (
-        <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#020617] text-slate-900 dark:text-slate-100 antialiased">
-            {/* Desktop sidebar */}
-            <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] flex-col border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 lg:flex">
-                <SidebarContent url={url} userName={userName} userEmail={userEmail} />
-            </aside>
+        <ToastProvider>
+            <ConfirmProvider>
+                <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#020617] text-slate-900 dark:text-slate-100 antialiased">
+                {/* Desktop sidebar */}
+                <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] flex-col border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 lg:flex">
+                    <SidebarContent url={url} userName={userName} userEmail={userEmail} />
+                </aside>
 
-            {/* Mobile drawer */}
-            <AnimatePresence>
-                {open && (
-                    <>
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            onClick={() => setOpen(false)}
-                            className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm lg:hidden"
-                        />
-                        <motion.aside
-                            initial={{ x: '-100%' }}
-                            animate={{ x: 0 }}
-                            exit={{ x: '-100%' }}
-                            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-                            className="fixed inset-y-0 left-0 z-50 flex w-[300px] flex-col border-r border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900 lg:hidden"
-                        >
-                            <SidebarContent url={url} userName={userName} userEmail={userEmail} onNavigate={() => setOpen(false)} />
-                        </motion.aside>
-                    </>
-                )}
-            </AnimatePresence>
+                {/* Mobile drawer */}
+                <AnimatePresence>
+                    {open && (
+                        <>
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                onClick={() => setOpen(false)}
+                                className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm lg:hidden"
+                            />
+                            <motion.aside
+                                initial={{ x: '-100%' }}
+                                animate={{ x: 0 }}
+                                exit={{ x: '-100%' }}
+                                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                                className="fixed inset-y-0 left-0 z-50 flex w-[300px] flex-col border-r border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900 lg:hidden"
+                            >
+                                <SidebarContent url={url} userName={userName} userEmail={userEmail} onNavigate={() => setOpen(false)} />
+                            </motion.aside>
+                        </>
+                    )}
+                </AnimatePresence>
 
-            <div className="lg:pl-[280px]">
-                <header className="sticky top-0 z-30 flex h-[64px] items-center justify-between border-b border-slate-200 bg-white/80 px-4 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/80 sm:px-6 lg:px-8">
-                    <div className="flex min-w-0 items-center gap-3">
-                        <button
-                            onClick={() => setOpen(true)}
-                            className="flex size-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 lg:hidden"
-                            aria-label="Buka menu"
-                        >
-                            <Menu className="size-5" />
-                        </button>
-                        <div className="min-w-0">
-                            {title && (
-                                <>
-                                    <h1 className="truncate text-[15px] font-semibold tracking-tight text-slate-900 dark:text-white">{title}</h1>
-                                    {description && <p className="hidden truncate text-xs text-slate-500 dark:text-slate-400 sm:block">{description}</p>}
-                                </>
-                            )}
-                        </div>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-                        <Link href={R.home} className="hidden items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 sm:inline-flex">
-                            <Home className="size-3.5" /> Lihat Website
-                        </Link>
-                        <ThemeToggle />
-                        <div className="hidden h-6 w-px bg-slate-200 dark:bg-slate-700 sm:block" aria-hidden />
-                        <div className="flex items-center gap-3">
-                            <div className="hidden text-right sm:block">
-                                <p className="text-xs font-semibold text-slate-900 dark:text-white">{userName}</p>
-                                <p className="text-[11px] text-slate-500 dark:text-slate-400">{userEmail}</p>
+                <div className="lg:pl-[280px]">
+                    <header className="sticky top-0 z-30 flex h-[64px] items-center justify-between border-b border-slate-200 bg-white/80 px-4 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/80 sm:px-6 lg:px-8">
+                        <div className="flex min-w-0 items-center gap-3">
+                            <button
+                                onClick={() => setOpen(true)}
+                                className="flex size-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 lg:hidden"
+                                aria-label="Buka menu"
+                            >
+                                <Menu className="size-5" />
+                            </button>
+                            <div className="min-w-0">
+                                {title && (
+                                    <>
+                                        <h1 className="truncate text-[15px] font-semibold tracking-tight text-slate-900 dark:text-white">{title}</h1>
+                                        {description && <p className="hidden truncate text-xs text-slate-500 dark:text-slate-400 sm:block">{description}</p>}
+                                    </>
+                                )}
                             </div>
-                            <span className="flex size-8 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white dark:bg-white dark:text-slate-900 ring-2 ring-white dark:ring-slate-800 shadow-sm">
-                                {initials(userName)}
-                            </span>
                         </div>
+                        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+                            <Link href={R.home} className="hidden items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 sm:inline-flex">
+                                <Home className="size-3.5" /> Lihat Website
+                            </Link>
+                            <ThemeToggle />
+                            <div className="hidden h-6 w-px bg-slate-200 dark:bg-slate-700 sm:block" aria-hidden />
+                            <div className="flex items-center gap-3">
+                                <div className="hidden text-right sm:block">
+                                    <p className="text-xs font-semibold text-slate-900 dark:text-white">{userName}</p>
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-400">{userEmail}</p>
+                                </div>
+                                <span className="flex size-8 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white dark:bg-white dark:text-slate-900 ring-2 ring-white dark:ring-slate-800 shadow-sm">
+                                    {initials(userName)}
+                                </span>
+                            </div>
+                        </div>
+                    </header>
+
+                    <div className="mx-auto w-full max-w-[1280px] px-4 sm:px-6 lg:px-8">
+                        {breadcrumb ?? <AdminBreadcrumb />}
                     </div>
-                </header>
 
-                <main className="mx-auto w-full max-w-[1280px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8">{children}</main>
-                <footer className="border-t border-slate-100 px-6 py-4 text-center text-xs text-slate-400 dark:border-slate-800/50 dark:text-slate-500">
-                    © {new Date().getFullYear()} Raycode — Admin Panel · Semua perubahan tersimpan otomatis
-                </footer>
-            </div>
-
-            <Toast />
-        </div>
+                    <main className="mx-auto w-full max-w-[1280px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8">{children}</main>
+                    <footer className="border-t border-slate-100 px-6 py-4 text-center text-xs text-slate-400 dark:border-slate-800/50 dark:text-slate-500">
+                        © {new Date().getFullYear()} Raycode — Admin Panel · Semua perubahan tersimpan otomatis
+                    </footer>
+                </div>
+                </div>
+            </ConfirmProvider>
+        </ToastProvider>
     );
 }
 

@@ -5,9 +5,10 @@ import { AdminLayout } from '@/Components/layout/AdminLayout';
 import { Badge, Button, Card, Input, Textarea } from '@/Components/ui';
 import { Modal } from '@/Components/Modal';
 import { router } from '@inertiajs/react';
-import { Newspaper, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Copy, ExternalLink, Newspaper, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from '@inertiajs/react';
+import { useConfirm } from '@/Components/useConfirm';
 
 interface PostRow {
     id: number;
@@ -27,6 +28,7 @@ interface Props extends PageProps {
 }
 
 export default function AdminBlog({ posts }: Props) {
+    const { confirm } = useConfirm();
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState<PostRow | null>(null);
     const { data, setData, post, put, processing, errors, reset, transform } = useForm({
@@ -37,12 +39,13 @@ export default function AdminBlog({ posts }: Props) {
         category: 'Engineering',
         cover_url: '',
         tags: '',
+        is_published: true,
     });
 
     const openCreate = () => {
         setEditing(null);
         reset();
-        setData({ title: '', slug: '', excerpt: '', content: '', category: 'Engineering', cover_url: '', tags: '' });
+        setData({ title: '', slug: '', excerpt: '', content: '', category: 'Engineering', cover_url: '', tags: '', is_published: true });
         setModalOpen(true);
     };
 
@@ -56,6 +59,23 @@ export default function AdminBlog({ posts }: Props) {
             category: row.category,
             cover_url: row.cover_url ?? '',
             tags: (row.tags ?? []).join(', '),
+            is_published: !!row.published_at,
+        });
+        setModalOpen(true);
+    };
+
+    const clonePost = (row: PostRow) => {
+        setEditing(null);
+        reset();
+        setData({
+            title: `${row.title} (Salinan)`,
+            slug: `${row.slug}-salinan`,
+            excerpt: row.excerpt,
+            content: row.content,
+            category: row.category,
+            cover_url: row.cover_url ?? '',
+            tags: (row.tags ?? []).join(', '),
+            is_published: false,
         });
         setModalOpen(true);
     };
@@ -88,8 +108,13 @@ export default function AdminBlog({ posts }: Props) {
         }
     };
 
-    const destroy = (post_: PostRow) => {
-        if (confirm(`Hapus artikel "${post_.title}"?`)) {
+    const destroy = async (post_: PostRow) => {
+        if (await confirm({
+            title: `Hapus Artikel Blog`,
+            description: `Hapus artikel "${post_.title}"? Artikel ini tidak dapat dikembalikan dan tautan publiknya akan menjadi 404.`,
+            variant: 'danger',
+            confirmLabel: 'Ya, Hapus Artikel',
+        })) {
             router.delete(R.adminBlogDestroy(post_.id), { preserveScroll: true });
         }
     };

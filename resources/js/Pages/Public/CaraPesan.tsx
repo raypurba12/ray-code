@@ -1,5 +1,6 @@
 import { R } from '@/lib/routes';
 import { PublicLayout } from '@/Components/layout/PublicLayout';
+import { SeoHead } from '@/Components/SeoHead';
 import { Reveal } from '@/Components/Reveal';
 import { usePage } from '@inertiajs/react';
 import { ArrowRight, CheckCircle2, Clock, CreditCard, FileText, MessageCircle, PackageCheck, Send } from 'lucide-react';
@@ -51,6 +52,10 @@ export default function CaraPesan() {
     ];
     return (
         <PublicLayout>
+            <SeoHead
+                title="Cara Pemesanan Layanan & Joki"
+                description="Panduan 6 langkah mudah memesan proyek web development & joki koding di Raycode Studio."
+            />
             <section className="relative overflow-hidden">
                 <div className="bg-grid mask-fade-y pointer-events-none absolute inset-0" aria-hidden />
                 <div className="relative mx-auto max-w-7xl px-5 pt-16 pb-10 lg:px-8 lg:pt-20">

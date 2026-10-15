@@ -1,7 +1,9 @@
 import { R } from '@/lib/routes';
 import { PublicLayout } from '@/Components/layout/PublicLayout';
+import { SeoHead } from '@/Components/SeoHead';
 import { Reveal } from '@/Components/Reveal';
 import { Button, Eyebrow, Input, Select, Textarea } from '@/Components/ui';
+import { trackEvent } from '@/lib/analytics';
 import { useForm, usePage } from '@inertiajs/react';
 import { Clock, Mail, MapPin, MessageCircle, Phone, Send } from 'lucide-react';
 import { useState } from 'react';
@@ -21,20 +23,27 @@ export default function Contact() {
         phone: '',
         subject: 'Pengembangan Website',
         message: '',
+        website: '', // honeypot — harus kosong (P0-3)
     });
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
         if (method === 'wa') {
+            trackEvent('contact_wa_click', { subject: data.subject });
             const text = `Halo Raycode!%0A%0ANama: ${encodeURIComponent(data.name)}%0ANo. WA: ${encodeURIComponent(data.phone)}%0AKeperluan: ${encodeURIComponent(data.subject)}%0APesan: ${encodeURIComponent(data.message)}`;
             window.open(`https://wa.me/${waNumber}?text=${text}`, '_blank', 'noreferrer,noopener');
             return;
         }
+        trackEvent('contact_submit', { subject: data.subject });
         post(R.contact, { preserveScroll: true });
     };
 
     return (
         <PublicLayout>
+            <SeoHead
+                title="Hubungi Kami & Konsultasi Proyek"
+                description="Konsultasikan ide proyek Anda secara gratis dengan tim ahli Raycode Studio. Respons cepat dalam 1 hari kerja."
+            />
             <section className="relative overflow-hidden pt-17">
                 <div className="bg-grid mask-fade-y pointer-events-none absolute inset-0" aria-hidden />
                 <div className="relative mx-auto max-w-7xl px-5 pt-16 pb-24 lg:px-8 lg:pt-24 lg:pb-32">
@@ -122,6 +131,19 @@ export default function Contact() {
                                 </div>
 
                                 <form onSubmit={submit} className="space-y-5">
+                                    {/* Honeypot — jangan diisi manusia, bot akan isi */}
+                                    <div className="absolute -left-[9999px] top-auto h-px w-px overflow-hidden opacity-0" aria-hidden="true">
+                                        <label htmlFor="website" className="hidden">Website</label>
+                                        <input
+                                            id="website"
+                                            type="text"
+                                            tabIndex={-1}
+                                            autoComplete="off"
+                                            placeholder="Your website"
+                                            value={data.website}
+                                            onChange={(e) => setData('website', e.target.value)}
+                                        />
+                                    </div>
                                     <div className="grid gap-5 sm:grid-cols-2">
                                         <Input
                                             label="Nama Anda"

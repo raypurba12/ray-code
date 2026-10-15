@@ -5,9 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ContactMessage;
 use App\Models\Invoice;
-use App\Models\Message;
 use App\Models\Project;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -31,13 +31,20 @@ class DashboardController extends Controller
 
     private function monthlyRevenue(): array
     {
-        $rows = Invoice::selectRaw("DATE_FORMAT(paid_at, '%Y-%m') as month, SUM(total) as total")
-            ->where('status', 'paid')
+        $invoices = Invoice::where('status', 'paid')
+            ->whereNotNull('paid_at')
             ->whereYear('paid_at', now()->year)
-            ->groupBy('month')
-            ->orderBy('month')
             ->get();
 
-        return $rows->map(fn ($r) => ['month' => \Carbon\Carbon::parse($r->month.'-01')->format('M'), 'total' => (int) $r->total])->all();
+        $grouped = $invoices->groupBy(function ($invoice) {
+            return Carbon::parse($invoice->paid_at)->format('Y-m');
+        })->sortKeys();
+
+        return $grouped->map(function ($items, $monthKey) {
+            return [
+                'month' => Carbon::parse($monthKey.'-01')->format('M'),
+                'total' => (int) $items->sum('total'),
+            ];
+        })->values()->all();
     }
 }

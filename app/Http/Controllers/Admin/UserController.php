@@ -49,4 +49,31 @@ class UserController extends Controller
 
         return back()->with('success', 'User deleted.');
     }
+
+    public function bulkAction(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer', 'exists:users,id'],
+            'action' => ['required', 'in:delete,set_admin,set_client'],
+        ]);
+
+        $currentUserId = $request->user()->id;
+        $filteredIds = array_values(array_filter($validated['ids'], fn ($id) => (int) $id !== (int) $currentUserId));
+
+        if (empty($filteredIds)) {
+            return back()->with('error', 'Tidak ada pengguna yang dapat diubah (akun Anda sendiri dikecualikan).');
+        }
+
+        if ($validated['action'] === 'delete') {
+            User::whereIn('id', $filteredIds)->delete();
+
+            return back()->with('success', count($filteredIds).' pengguna berhasil dihapus.');
+        }
+
+        $newRole = $validated['action'] === 'set_admin' ? 'admin' : 'client';
+        User::whereIn('id', $filteredIds)->update(['role' => $newRole]);
+
+        return back()->with('success', count($filteredIds)." pengguna berhasil diubah perannya menjadi {$newRole}.");
+    }
 }

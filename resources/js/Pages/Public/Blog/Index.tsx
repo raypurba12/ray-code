@@ -2,6 +2,7 @@ import type { BlogPost } from '@/types';
 import { R } from '@/lib/routes';
 import { formatDate } from '@/lib/utils';
 import { PublicLayout } from '@/Components/layout/PublicLayout';
+import { SeoHead } from '@/Components/SeoHead';
 import { Reveal } from '@/Components/Reveal';
 import { Badge } from '@/Components/ui';
 import { Link } from '@inertiajs/react';
@@ -19,6 +20,10 @@ export default function BlogIndex({ posts, categories }: Props) {
 
     return (
         <PublicLayout>
+            <SeoHead
+                title="Blog & Wawasan Pengembangan Web"
+                description="Wawasan teknis, tutorial pemograman web, Laravel, React, dan berita terbaru dari Raycode Studio."
+            />
             <section className="relative overflow-hidden pt-17">
                 <div className="bg-grid mask-fade-y pointer-events-none absolute inset-0" aria-hidden />
                 <div className="relative mx-auto max-w-7xl px-5 pt-16 pb-10 lg:px-8 lg:pt-24">

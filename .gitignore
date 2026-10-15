@@ -24,3 +24,11 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 .aider*
+# Lighthouse reports
+lh-*.json
+lh*.json
+
+# Local gambar raw (bukan public) — public/images/webp tetap di-track untuk LCP
+gambar/
+# public/images/*.webp  # jangan ignore webp production (pp-800.webp 68k untuk LCP)
+/public/images/.gitkeep

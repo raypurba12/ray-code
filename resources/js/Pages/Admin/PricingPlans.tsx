@@ -9,6 +9,7 @@ import { router } from '@inertiajs/react';
 import { Check, Pencil, Plus, Star, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from '@inertiajs/react';
+import { useConfirm } from '@/Components/useConfirm';
 
 interface Props extends PageProps {
     plans: PricingPlan[];
@@ -69,8 +70,15 @@ export default function AdminPricingPlans({ plans }: Props) {
         }
     };
 
-    const destroy = (plan: PricingPlan) => {
-        if (confirm(`Hapus paket "${plan.name}"?`)) {
+    const { confirm } = useConfirm();
+
+    const destroy = async (plan: PricingPlan) => {
+        if (await confirm({
+            title: `Hapus Paket Harga`,
+            description: `Hapus paket "${plan.name}"? Paket ini tidak akan lagi tampil di halaman publik.`,
+            variant: 'danger',
+            confirmLabel: 'Ya, Hapus Paket',
+        })) {
             router.delete(R.adminPricingPlansDestroy(plan.id), { preserveScroll: true });
         }
     };
@@ -124,18 +132,86 @@ export default function AdminPricingPlans({ plans }: Props) {
             <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? `Edit: ${editing.name}` : 'Tambah Paket Harga'} wide>
                 <form onSubmit={submit} className="space-y-5">
                     <div className="grid gap-5 sm:grid-cols-[1fr_1fr]">
-                        <Input label="Nama paket" value={data.name} onChange={(e) => setData('name', e.target.value)} error={errors.name} required autoFocus />
-                        <Input label="Slug (kosongkan auto)" value={data.slug} onChange={(e) => setData('slug', e.target.value)} placeholder="starter" error={errors.slug} />
+                        <Input
+                            label="Nama Paket"
+                            value={data.name}
+                            onChange={(e) => setData('name', e.target.value)}
+                            error={errors.name}
+                            required
+                            autoFocus
+                            placeholder="Starter / Growth / Pro"
+                            tooltip="Nama paket langganan atau proyek (contoh: Starter, Scale, Custom Enterprise)"
+                        />
+                        <Input
+                            label="Slug"
+                            value={data.slug}
+                            onChange={(e) => setData('slug', e.target.value)}
+                            placeholder="starter"
+                            error={errors.slug}
+                            hint="Kosongkan untuk otomatis"
+                            tooltip="Identifier unik URL paket (contoh: starter, business-pro)"
+                        />
                     </div>
-                    <Input label="Tagline" value={data.tagline} onChange={(e) => setData('tagline', e.target.value)} error={errors.tagline} required />
+                    <Input
+                        label="Tagline / Deskripsi Singkat"
+                        value={data.tagline}
+                        onChange={(e) => setData('tagline', e.target.value)}
+                        error={errors.tagline}
+                        required
+                        placeholder="Cocok untuk UMKM dan bisnis rintisan yang ingin go digital"
+                        tooltip="Penjelasan singkat untuk siapa paket ini dirancang"
+                    />
                     <div className="grid gap-5 sm:grid-cols-3">
-                        <Input label="Harga (IDR)" type="number" min={0} value={data.price} onChange={(e) => setData('price', Number(e.target.value))} error={errors.price} required />
-                        <Input label="Unit" value={data.unit} onChange={(e) => setData('unit', e.target.value)} placeholder="/proyek /bulan" error={errors.unit} required />
-                        <Input label="Sort order" type="number" value={data.sort_order} onChange={(e) => setData('sort_order', Number(e.target.value))} error={errors.sort_order} />
+                        <Input
+                            label="Harga (IDR)"
+                            type="number"
+                            min={0}
+                            value={data.price}
+                            onChange={(e) => setData('price', Number(e.target.value))}
+                            error={errors.price}
+                            required
+                            tooltip="Harga paket dalam Rupiah tanpa titik (contoh: 4999000)"
+                        />
+                        <Input
+                            label="Satuan / Unit"
+                            value={data.unit}
+                            onChange={(e) => setData('unit', e.target.value)}
+                            placeholder="/proyek /bulan"
+                            error={errors.unit}
+                            required
+                            tooltip="Keterangan periode atau basis harga (contoh: /proyek atau /bulan)"
+                        />
+                        <Input
+                            label="Urutan Tampil (Sort)"
+                            type="number"
+                            value={data.sort_order}
+                            onChange={(e) => setData('sort_order', Number(e.target.value))}
+                            error={errors.sort_order}
+                            hint="Angka terkecil di kiri"
+                            tooltip="Urutan kartu di halaman pricing (1 paling kiri, 4 paling kanan)"
+                        />
                     </div>
-                    <Textarea label="Fitur (satu per baris)" rows={6} value={data.features} onChange={(e) => setData('features', e.target.value)} error={errors.features} required placeholder="Hingga 5 halaman&#10;Desain kustom" />
+                    <Textarea
+                        label="Fitur Termasuk"
+                        rows={6}
+                        value={data.features}
+                        onChange={(e) => setData('features', e.target.value)}
+                        error={errors.features}
+                        required
+                        placeholder="Hingga 5 halaman responsif&#10;Desain kustom Figma&#10;Domain & hosting 1 tahun"
+                        hint="Satu baris per fitur"
+                        tooltip="Poin-poin fitur yang didapatkan klien, tekan Enter untuk baris baru"
+                    />
                     <div className="grid gap-5 sm:grid-cols-2">
-                        <Input label="CTA text" value={data.cta_text} onChange={(e) => setData('cta_text', e.target.value)} error={errors.cta_text} required />
+                        <Input
+                            label="Teks Tombol (CTA)"
+                            value={data.cta_text}
+                            onChange={(e) => setData('cta_text', e.target.value)}
+                            error={errors.cta_text}
+                            required
+                            placeholder="Pilih Paket Ini"
+                            tooltip="Label tombol pemesanan (contoh: Mulai Sekarang, Pesan Paket, Konsultasi)"
+                        />
                         <div className="flex flex-col gap-3 pt-6">
                             <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300"><input type="checkbox" checked={data.is_popular} onChange={(e) => setData('is_popular', e.target.checked)} className="size-4 rounded accent-amber-500" /> Tandai sebagai Populer</label>
                             <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300"><input type="checkbox" checked={data.is_active} onChange={(e) => setData('is_active', e.target.checked)} className="size-4 rounded accent-brand-600" /> Aktif (tampilkan di pricing)</label>

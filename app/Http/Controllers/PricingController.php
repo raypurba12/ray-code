@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\PricingPlan;
 use App\Models\Faq;
+use App\Models\PricingPlan;
 use Inertia\Inertia;
 
 class PricingController extends Controller

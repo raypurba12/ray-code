@@ -35,4 +35,20 @@ return [
         ],
     ],
 
+    'fonnte' => [
+        'token' => env('FONNTE_TOKEN'),
+    ],
+
+    'wa' => [
+        'gateway_url' => env('WA_GATEWAY_URL'),
+        'token' => env('WA_GATEWAY_TOKEN'),
+        'sender' => env('WA_GATEWAY_SENDER'),
+    ],
+
+    'analytics' => [
+        'ga_measurement_id' => env('GA_MEASUREMENT_ID'),
+        'plausible_domain' => env('PLAUSIBLE_DOMAIN'),
+        'google_verification' => env('GOOGLE_SITE_VERIFICATION'),
+    ],
+
 ];

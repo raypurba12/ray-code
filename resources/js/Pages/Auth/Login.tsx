@@ -69,6 +69,12 @@ export default function Login() {
                                 Ingat saya di perangkat ini
                             </label>
 
+                            <div className="flex items-center justify-between">
+                                <a href="/forgot-password" className="text-sm font-medium text-brand-600 hover:text-brand-700 hover:underline">
+                                    Lupa kata sandi?
+                                </a>
+                            </div>
+
                             <Button type="submit" size="lg" disabled={processing} className="w-full">
                                 {processing ? 'Masuk...' : 'Masuk'}
                                 {!processing && <ArrowRight className="size-4" />}

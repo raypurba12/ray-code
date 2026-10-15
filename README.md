@@ -10,23 +10,24 @@ Platform jasa digital berbasis **Laravel 12 + Inertia.js + React 19**. Menangani
 
 **Public**
 - `/` Homepage dinamis (featured services, portfolio, testimonial, pricing, FAQ, blog)
-- `/services`, `/services/{slug}`, `/layanan-reguler`
+- `/services`, `/services/{slug}` (Layanan Paket & Joki Satuan)
 - `/portfolio`, `/portfolio/{slug}`
 - `/blog`, `/blog/{slug}`
-- `/pricing`, `/estimator`, `/faq`, `/contact`, `/cara-pesan`
-- `/campus-smash` & `/campus-adventure` (mini game/interaktif)
+- `/pricing`, `/estimator`, `/pantau-pesanan` (Track Order), `/faq`, `/contact`, `/cara-pesan`
 - Multi-bahasa ID/EN (`resources/js/lib/translations.ts:1`)
+- Integrasi Midtrans Snap & Webhook (Idempoten & Signature Security)
 
 **Client Dashboard** (`/dashboard` - auth)
-- Lihat progress project & update
+- Lihat progress project, milestone & update
 - Buat order layanan (`/dashboard/order`)
-- Kelola invoice & pembayaran
-- Messaging dengan admin
+- Download file deliverable proyek (`/dashboard/projects/{project}`)
+- Kelola invoice & pembayaran via Midtrans Snap
+- Messaging langsung dengan admin
 
 **Admin Panel** (`/admin` - role admin)
-- Kelola Services, Portfolios, Blog, Pricing Plans, Testimonials, FAQs
-- Kelola Projects, Orders, Messages, Users, Settings & Homepage
-- Joki Services bilingual
+- Kelola Services (Paket & Joki), Portfolios, Blog, Pricing Plans, Testimonials, FAQs
+- Kelola Projects, Orders, Estimator Leads, Messages, Users, Settings & Homepage
+- Upload Deliverable Files & manajemen invoice Midtrans
 
 ---
 

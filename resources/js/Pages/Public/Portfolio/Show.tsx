@@ -1,9 +1,12 @@
 import type { PortfolioItem } from '@/types';
 import { R } from '@/lib/routes';
+import { getVideoKind, getVimeoEmbedUrl, getYoutubeEmbedUrl } from '@/lib/video';
 import { PublicLayout } from '@/Components/layout/PublicLayout';
+import { SeoHead } from '@/Components/SeoHead';
 import { Reveal } from '@/Components/Reveal';
 import { Badge, ButtonLink, Eyebrow } from '@/Components/ui';
-import { ArrowLeft, ArrowRight, ExternalLink } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ExternalLink, Play } from 'lucide-react';
+import { useState } from 'react';
 
 interface Props {
     item: PortfolioItem;
@@ -13,17 +16,26 @@ interface Props {
 export default function PortfolioShow({ item, related }: Props) {
     return (
         <PublicLayout>
+            <SeoHead
+                title={`${item.title} — Portofolio ${item.category}`}
+                description={item.description.slice(0, 160)}
+                image={item.thumbnail_url || undefined}
+            />
             <article className="pt-17">
-                {/* Hero */}
+                {/* Hero — video as background / full-bleed */}
                 <section className="relative overflow-hidden bg-slate-950">
-                    <div className="bg-dots absolute inset-0 opacity-30" aria-hidden />
+                    {item.video_url && <HeroVideoBackground url={item.video_url} thumbnail={item.thumbnail_url} title={item.title} />}
+                    {/* overlay gradient untuk keterbacaan teks — jangan terlalu gelap, cukup untuk teks putih */}
+                    {item.video_url && <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-slate-900/20" aria-hidden />}
+                    {item.video_url && <div className="absolute inset-0 bg-slate-950/25" aria-hidden />}
+                    <div className={`bg-dots absolute inset-0 ${item.video_url ? 'opacity-15' : 'opacity-30'}`} aria-hidden />
                     <div
                         className="pointer-events-none absolute -top-32 right-0 size-[480px] rounded-full bg-brand-600/20 blur-3xl"
                         aria-hidden
                     />
                     <div className="relative mx-auto max-w-7xl px-5 py-16 lg:px-8 lg:py-24">
                         <Reveal>
-                            <a href={R.portfolioIndex} className="mb-8 inline-flex items-center gap-1.5 text-sm font-medium text-slate-400 transition-colors hover:text-brand-400">
+                            <a href={R.portfolioIndex} className="mb-8 inline-flex items-center gap-1.5 text-sm font-medium text-white/70 transition-colors hover:text-white">
                                 <ArrowLeft className="size-4" />
                                 Kembali ke portofolio
                             </a>
@@ -33,11 +45,11 @@ export default function PortfolioShow({ item, related }: Props) {
                                 <span className="rounded-md border border-white/15 bg-white/5 px-3 py-1 font-mono text-xs font-semibold text-brand-300 backdrop-blur">
                                     {item.category}
                                 </span>
-                                <span className="font-mono text-xs text-slate-500">{item.year}</span>
+                                <span className="font-mono text-xs text-white/60">{item.year}</span>
                                 {item.is_featured && <Badge tone="blue">★ Unggulan</Badge>}
                             </div>
                             <h1 className="mt-6 max-w-3xl text-4xl font-extrabold tracking-tight text-balance text-white sm:text-5xl">{item.title}</h1>
-                            <p className="mt-4 font-medium text-slate-400">Klien: {item.client_name}</p>
+                            <p className="mt-4 font-medium text-white/70">Klien: {item.client_name}</p>
                         </Reveal>
 
                         {item.live_url && (
@@ -152,5 +164,114 @@ export default function PortfolioShow({ item, related }: Props) {
                 )}
             </article>
         </PublicLayout>
+    );
+}
+
+function HeroVideoBackground({ url, thumbnail, title }: { url: string; thumbnail: string | null; title: string }) {
+    const kind = getVideoKind(url);
+    if (kind === 'mp4') {
+        return (
+            <div className="pointer-events-none absolute inset-0" aria-hidden>
+                <video
+                    src={url}
+                    poster={thumbnail ?? undefined}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    preload="metadata"
+                    className="absolute inset-0 size-full object-cover"
+                />
+            </div>
+        );
+    }
+    if (kind === 'youtube') {
+        const embed = getYoutubeEmbedUrl(url, { autoplay: true, mute: true, loop: true, controls: false });
+        if (!embed) return null;
+        return (
+            <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+                <iframe
+                    src={embed}
+                    title={`${title} — background`}
+                    className="absolute top-1/2 left-1/2 h-[56.25vw] min-h-full w-[177.78vh] min-w-full -translate-x-1/2 -translate-y-1/2 border-0"
+                    allow="autoplay; encrypted-media"
+                    referrerPolicy="strict-origin-when-cross-origin"
+                    loading="eager"
+                />
+            </div>
+        );
+    }
+    if (kind === 'vimeo') {
+        const embed = getVimeoEmbedUrl(url, { autoplay: true, mute: true, loop: true, controls: false });
+        if (!embed) return null;
+        return (
+            <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+                <iframe
+                    src={embed}
+                    title={`${title} — background`}
+                    className="absolute top-1/2 left-1/2 h-[56.25vw] min-h-full w-[177.78vh] min-w-full -translate-x-1/2 -translate-y-1/2 border-0"
+                    allow="autoplay; fullscreen"
+                    loading="eager"
+                />
+            </div>
+        );
+    }
+    return null;
+}
+
+function DemoVideo({ url, thumbnail, title, compact }: { url: string; thumbnail: string | null; title: string; compact?: boolean }) {
+    const [muted, setMuted] = useState(true);
+    const kind = getVideoKind(url);
+
+    if (kind === 'youtube') {
+        const autoplayEmbed = getYoutubeEmbedUrl(url, { autoplay: true, mute: muted, loop: true, controls: true });
+        if (!autoplayEmbed) return <div className="p-8 text-center text-sm text-white/60">URL YouTube tidak valid</div>;
+        return (
+            <div className={compact ? 'relative aspect-video w-full bg-black' : 'relative aspect-video w-full bg-black'}>
+                <iframe
+                    src={autoplayEmbed}
+                    title={`${title} — demo`}
+                    className="absolute inset-0 size-full"
+                    allow="autoplay; encrypted-media; picture-in-picture"
+                    allowFullScreen
+                    loading="eager"
+                    referrerPolicy="strict-origin-when-cross-origin"
+                />
+            </div>
+        );
+    }
+
+    if (kind === 'vimeo') {
+        const embed = getVimeoEmbedUrl(url, { autoplay: true, mute: muted, loop: true, controls: true });
+        if (!embed) return <div className="p-8 text-center text-sm text-white/60">URL Vimeo tidak valid</div>;
+        return (
+            <div className="relative aspect-video w-full bg-black">
+                <iframe src={embed} title={`${title} — demo`} className="absolute inset-0 size-full" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen loading="eager" />
+            </div>
+        );
+    }
+
+    // mp4 / webm / direct
+    return (
+        <div className="relative aspect-video w-full bg-black">
+            <video
+                src={url}
+                poster={thumbnail ?? undefined}
+                autoPlay
+                muted={muted}
+                loop
+                playsInline
+                controls
+                preload="metadata"
+                className="absolute inset-0 size-full object-contain"
+            />
+            <button
+                type="button"
+                onClick={() => setMuted((m) => !m)}
+                className="absolute right-3 bottom-3 rounded-full bg-black/70 px-2.5 py-1 font-mono text-[11px] font-medium text-white backdrop-blur hover:bg-black/80"
+            >
+                {muted ? '🔇 Unmute' : '🔊 Mute'}
+            </button>
+        </div>
     );
 }

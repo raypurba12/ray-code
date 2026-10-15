@@ -3,6 +3,7 @@ import { R } from '@/lib/routes';
 import { formatIDR } from '@/lib/utils';
 import { ServiceIcon } from '@/lib/icons';
 import { PublicLayout } from '@/Components/layout/PublicLayout';
+import { SeoHead } from '@/Components/SeoHead';
 import { Reveal } from '@/Components/Reveal';
 import { Badge, ButtonLink, Eyebrow } from '@/Components/ui';
 import { usePage } from '@inertiajs/react';
@@ -19,6 +20,7 @@ export default function ServiceShow({ service, relatedServices }: Props) {
 
     return (
         <PublicLayout>
+            <SeoHead title={service.title} description={service.short_desc} />
             <article className="pt-17">
                 {/* Header */}
                 <section className="relative overflow-hidden border-b border-line bg-alt">

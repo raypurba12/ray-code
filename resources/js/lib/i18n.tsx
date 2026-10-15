@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { translations, type Locale } from './translations';
+export type { Locale };
 
 type Translations = typeof translations;
 

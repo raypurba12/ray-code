@@ -5,20 +5,24 @@ import { Link, usePage } from '@inertiajs/react';
 import { ArrowUpRight, BadgeDollarSign, Calculator, ChevronDown, Layers, LayoutGrid, Menu, TerminalSquare, X, Zap } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Toast } from '@/Components/Toast';
+import { CookieConsent } from '@/Components/CookieConsent';
 import { ButtonLink } from '@/Components/ui';
 import { ThemeToggle } from '@/Components/ThemeToggle';
 import { LanguageSwitcher } from '@/Components/LanguageSwitcher';
 import { useI18n } from '@/lib/i18n';
 
-export function Logo({ light = false }: { light?: boolean }) {
+export function Logo({ light: _light = false }: { light?: boolean }) {
     return (
-        <Link href={R.home} className="group inline-flex items-center gap-2.5">
-            <span className="relative flex size-9 items-center justify-center overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-black/5 transition-transform duration-300 group-hover:rotate-3 group-hover:shadow-md dark:bg-white dark:ring-white/10">
-                <img src="/ray.png" alt="Raycode" width={36} height={36} className="size-9 object-contain p-1" loading="eager" decoding="async" />
-            </span>
-            <span className={cn('font-mono text-lg font-semibold tracking-tight', light ? 'text-white' : 'text-slate-900 dark:text-white')}>
-                ray<span className={light ? 'text-white' : 'text-brand-600 dark:text-brand-400'}>code</span>
-            </span>
+        <Link href={R.home} className="group inline-flex items-center">
+            <img
+                src="/ray.png?v=3"
+                alt="Raycode"
+                width={220}
+                height={48}
+                className="h-12 w-auto max-w-[240px] object-contain transition-transform duration-300 group-hover:scale-[1.02] dark:invert sm:h-14 sm:max-w-[260px]"
+                loading="eager"
+                decoding="async"
+            />
         </Link>
     );
 }
@@ -38,6 +42,7 @@ function Navbar({ user }: { user: User | null }) {
     const [servicesOpen, setServicesOpen] = useState(false);
     const [mobileLayananOpen, setMobileLayananOpen] = useState(false);
     const servicesRef = useRef<HTMLDivElement>(null);
+    const closeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
     const url = usePage().url;
 
     useEffect(() => {
@@ -67,8 +72,18 @@ function Navbar({ user }: { user: User | null }) {
         return () => {
             document.removeEventListener('mousedown', onClickOutside);
             document.removeEventListener('keydown', onEsc);
+            if (closeTimeout.current) clearTimeout(closeTimeout.current);
         };
     }, []);
+
+    const handleServicesEnter = () => {
+        if (closeTimeout.current) clearTimeout(closeTimeout.current);
+        setServicesOpen(true);
+    };
+    const handleServicesLeave = () => {
+        if (closeTimeout.current) clearTimeout(closeTimeout.current);
+        closeTimeout.current = setTimeout(() => setServicesOpen(false), 120);
+    };
 
     const isServicesActive = url.startsWith('/services');
 
@@ -99,11 +114,12 @@ function Navbar({ user }: { user: User | null }) {
                         {t('nav.home')}
                     </Link>
 
-                    {/* LAYANAN DROPDOWN */}
-                    <div ref={servicesRef} className="relative">
+                    {/* LAYANAN DROPDOWN — hover open, click fallback */}
+                    <div ref={servicesRef} className="relative" onMouseEnter={handleServicesEnter} onMouseLeave={handleServicesLeave}>
                         <button
                             type="button"
                             onClick={() => setServicesOpen((v) => !v)}
+                            onMouseEnter={handleServicesEnter}
                             aria-expanded={servicesOpen}
                             aria-haspopup="true"
                             className={cn(
@@ -123,8 +139,8 @@ function Navbar({ user }: { user: User | null }) {
                         {/* Dropdown panel - simple 4 item */}
                         <div
                             className={cn(
-                                'absolute left-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-xl border border-line bg-card py-1.5 shadow-lg dark:border-white/10 dark:bg-[#101625]',
-                                servicesOpen ? 'visible opacity-100 pointer-events-auto' : 'invisible opacity-0 pointer-events-none',
+                                'absolute left-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-xl border border-line bg-card py-1.5 shadow-lg transition-all duration-200 dark:border-white/10 dark:bg-[#101625]',
+                                servicesOpen ? 'visible translate-y-0 opacity-100 pointer-events-auto' : 'invisible -translate-y-1 opacity-0 pointer-events-none',
                             )}
                         >
                             <Link href={R.servicesIndex} onClick={() => setServicesOpen(false)} className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-hover hover:text-ink dark:text-slate-200 dark:hover:bg-white/[0.06] dark:hover:text-white">
@@ -146,10 +162,11 @@ function Navbar({ user }: { user: User | null }) {
                         </div>
                     </div>
 
-                    {/* Portofolio, Blog, Cara Pesan, FAQ, Kontak */}
+                    {/* Portofolio, Blog, Pantau, Cara Pesan, FAQ, Kontak */}
                     {[
                         { label: t('nav.portfolio'), href: R.portfolioIndex },
                         { label: t('nav.blog'), href: R.blogIndex },
+                        { label: t('nav.trackOrder'), href: R.trackOrder },
                         { label: t('nav.howToOrder'), href: R.caraPesan },
                         { label: t('nav.faq'), href: R.faq },
                         { label: t('nav.contact'), href: R.contact },
@@ -179,35 +196,26 @@ function Navbar({ user }: { user: User | null }) {
                     {user ? (
                         <>
                             <ButtonLink href={user.role === 'admin' ? R.adminDashboard : R.clientDashboard} variant="secondary" size="sm">
-                                Dasbor
+                                {t('nav.dashboard')}
                             </ButtonLink>
                             <AvatarChip user={user} />
                         </>
                     ) : (
-                        <>
-                            <Link
-                                href={R.login}
-                                className="px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
-                            >
-                                {t('nav.login')}
-                            </Link>
-                            <Link
-                                href={R.contact}
-                                className="inline-flex h-9 items-center gap-1.5 rounded-full bg-brand-600 px-5 text-sm font-semibold text-white shadow-sm shadow-brand-600/25 transition-all duration-200 hover:-translate-y-px hover:bg-brand-700 active:translate-y-0"
-                            >
-                                {t('nav.startProject')}
-                                <ArrowUpRight className="size-4" aria-hidden />
-                            </Link>
-                        </>
+                        <Link
+                            href={R.login}
+                            className="px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+                        >
+                            {t('nav.login')}
+                        </Link>
                     )}
                 </div>
 
-                <div className="flex items-center gap-2 lg:hidden">
-                    <LanguageSwitcher variant="mobile" />
+                <div className="flex items-center gap-1.5 lg:hidden shrink-0">
+                    <LanguageSwitcher />
                     <ThemeToggle />
                     <button
                         onClick={() => setOpen((v) => !v)}
-                        className="flex size-10 items-center justify-center rounded-full border border-line bg-card text-ink shadow-sm dark:text-slate-200 dark:bg-card/80"
+                        className="flex size-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-900 shadow-sm dark:border-white/15 dark:bg-white dark:text-slate-900"
                         aria-label="Buka menu"
                         aria-expanded={open}
                     >
@@ -291,6 +299,7 @@ function Navbar({ user }: { user: User | null }) {
                         {[
                             { label: t('nav.portfolio'), href: R.portfolioIndex },
                             { label: t('nav.blog'), href: R.blogIndex },
+                            { label: t('nav.trackOrder'), href: R.trackOrder },
                             { label: t('nav.howToOrder'), href: R.caraPesan },
                             { label: t('nav.faq'), href: R.faq },
                             { label: t('nav.contact'), href: R.contact },
@@ -344,10 +353,11 @@ function AvatarChip({ user }: { user: User }) {
 }
 
 function AnnouncementBand() {
+    const { t } = useI18n();
     const { settings } = usePage<{ settings: Record<string, string> }>().props as unknown as { settings: Record<string, string> };
-    const text = settings?.announcement_text ?? 'Siap membangun sesuatu yang hebat?';
-    const textMobile = settings?.announcement_text_mobile ?? 'Siap membangun?';
-    const ctaLabel = settings?.announcement_cta_label ?? 'Konsultasi Gratis';
+    const text = settings?.announcement_text ?? t('announcement.text');
+    const textMobile = settings?.announcement_text_mobile ?? t('announcement.textMobile');
+    const ctaLabel = settings?.announcement_cta_label ?? t('announcement.cta');
     const ctaHref = settings?.announcement_cta_href ?? R.contact;
     return (
         <div className="relative z-10 bg-amber-400">
@@ -398,9 +408,21 @@ function Footer() {
     const contactPhone = settings?.contact_phone ?? '+62 812 3456 7890';
     const address = settings?.address ?? 'Jakarta — Remote-first';
     return (
-        <footer className="border-t border-slate-200/70 bg-slate-50 text-slate-600 dark:border-white/[0.06] dark:bg-[#0a0d14] dark:text-slate-400">
+        <footer className="relative overflow-hidden border-t border-slate-200/70 bg-slate-50 text-slate-600 dark:border-white/[0.06] dark:bg-[#0a0d14] dark:text-slate-400">
+            {/* Watermark besar — pakai logo asli /ray.png, konsisten dengan Logo header: light = original, dark = invert */}
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 select-none overflow-hidden" aria-hidden>
+                <img
+                    src="/ray.png?v=3"
+                    alt=""
+                    width={1600}
+                    height={480}
+                    loading="eager"
+                    decoding="async"
+                    className="mx-auto w-[148%] max-w-[1700px] translate-y-[22%] opacity-[0.11] sm:w-[132%] sm:translate-y-[18%] sm:opacity-[0.12] lg:w-[112%] lg:max-w-[1440px] lg:translate-y-[22%] dark:invert dark:opacity-[0.09] dark:sm:opacity-[0.10] dark:lg:opacity-[0.11]"
+                />
+            </div>
             <div className="pointer-events-none h-px w-full bg-gradient-to-r from-transparent via-brand-500/40 to-transparent" aria-hidden />
-            <div className="mx-auto max-w-7xl px-5 py-16 lg:px-8 lg:py-20">
+            <div className="relative z-10 mx-auto max-w-7xl px-5 py-16 lg:px-8 lg:py-20">
                 <div className="grid gap-12 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
                     <div>
                         <Logo light={false} />
@@ -414,10 +436,10 @@ function Footer() {
                     <FooterCol
                         title={t('footer.services')}
                         links={[
-                            { label: 'Pengembangan Website', href: R.servicesShow('website-development') },
-                            { label: 'Pengembangan Web App', href: R.servicesShow('web-app-development') },
-                            { label: 'Debugging & Perbaikan', href: R.servicesShow('debugging-fixing') },
-                            { label: 'Code Review & Audit', href: R.servicesShow('code-review') },
+                            { label: t('footer.webDev'), href: R.servicesShow('website-development') },
+                            { label: t('footer.webAppDev'), href: R.servicesShow('web-app-development') },
+                            { label: t('footer.debugging'), href: R.servicesShow('debugging-fixing') },
+                            { label: t('footer.codeReview'), href: R.servicesShow('code-review') },
                         ]}
                     />
                     <FooterCol
@@ -471,6 +493,7 @@ function FooterCol({ title, links }: { title: string; links: { label: string; hr
 }
 
 function FloatingWhatsApp() {
+    const { t } = useI18n();
     const { settings } = usePage<{ settings: Record<string, string> }>().props as unknown as { settings: Record<string, string> };
     const rawWhatsapp = settings?.whatsapp ?? '+6281234567890';
     const waNumber = rawWhatsapp.replace(/[^0-9]/g, '');
@@ -483,7 +506,7 @@ function FloatingWhatsApp() {
                     <span className="absolute inline-flex size-2 animate-ping rounded-full bg-emerald-400 opacity-75" aria-hidden />
                     <span className="relative inline-flex size-2 rounded-full bg-emerald-400" aria-hidden />
                 </span>
-                KAMI SIAP 24 JAM
+                {t('footer.ready24h')}
                 {/* panah kecil */}
                 <span className="absolute -bottom-1 right-6 size-2 rotate-45 bg-slate-900 ring-1 ring-white/10 dark:bg-white dark:ring-black/10" aria-hidden />
             </div>
@@ -492,11 +515,11 @@ function FloatingWhatsApp() {
                 href={waHref}
                 target="_blank"
                 rel="noreferrer noopener"
-                aria-label="Chat di WhatsApp"
+                aria-label={t('footer.chatWA')}
                 className="group flex items-center gap-3"
             >
                 <span className="hidden items-center rounded-full border border-line bg-card px-4 py-2 text-sm font-semibold text-ink shadow-lg shadow-black/10 transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100 sm:inline-flex translate-x-2 opacity-0 dark:border-white/10 dark:bg-[#1a2233] dark:text-white dark:shadow-black/30">
-                    Chat di WhatsApp
+                    {t('footer.chatWA')}
                 </span>
                 <span className="relative flex size-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-[0_12px_32px_-8px_rgb(37_211_102/0.6),0_4px_12px_rgb(0_0_0/0.15)] transition-all duration-300 hover:scale-105 hover:shadow-[0_16px_40px_-8px_rgb(37_211_102/0.7),0_8px_20px_rgb(0_0_0/0.2)] active:scale-95 sm:size-[60px]">
                     <span className="absolute inset-0 rounded-full bg-[#25D366] opacity-20 animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite]" aria-hidden />
@@ -524,6 +547,7 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
             <main>{children}</main>
             <Footer />
             <FloatingWhatsApp />
+            <CookieConsent />
             <Toast />
         </div>
     );

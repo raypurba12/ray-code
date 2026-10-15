@@ -34,7 +34,7 @@ class BlogController extends Controller
     public function update(Request $request, BlogPost $post)
     {
         $validated = $this->validated($request);
-        if (!empty($validated['slug'])) {
+        if (! empty($validated['slug'])) {
             $validated['slug'] = Str::slug($validated['slug']);
         }
         // keep original slug if empty
@@ -45,7 +45,7 @@ class BlogController extends Controller
         $original = $validated['slug'];
         $counter = 1;
         while (BlogPost::where('slug', $validated['slug'])->where('id', '!=', $post->id)->exists()) {
-            $validated['slug'] = $original . '-' . $counter++;
+            $validated['slug'] = $original.'-'.$counter++;
         }
 
         $post->update($validated);

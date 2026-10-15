@@ -70,6 +70,8 @@
     --color-brand-900: #1e3a8a;
 
     --animate-marquee: marquee 28s linear infinite;
+    --animate-marquee-reverse: marquee-reverse 28s linear infinite;
+    --animate-ticker: ticker 42s linear infinite;
     --animate-float: float 6s ease-in-out infinite;
     --animate-float-slow: float 8s ease-in-out infinite;
     --animate-blink: blink 1.1s step-end infinite;
@@ -87,6 +89,14 @@
     --animate-icon-pop: icon-pop 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 
     @keyframes marquee {
+        from { transform: translateX(0); }
+        to { transform: translateX(-50%); }
+    }
+    @keyframes marquee-reverse {
+        from { transform: translateX(-50%); }
+        to { transform: translateX(0); }
+    }
+    @keyframes ticker {
         from { transform: translateX(0); }
         to { transform: translateX(-50%); }
     }
@@ -143,6 +153,16 @@
         0% { transform: scale(0.9); }
         50% { transform: scale(1.08); }
         100% { transform: scale(1); }
+    }
+    @keyframes blockBox {
+        0% { transform: translateX(-101%); }
+        49% { transform: translateX(0); }
+        50% { transform: translateX(0); }
+        100% { transform: translateX(101%); }
+    }
+    @keyframes blockText {
+        0%, 49.9% { opacity: 0; }
+        50%, 100% { opacity: 1; }
     }
 }
 
@@ -283,6 +303,27 @@ html.js-reveal .reveal-right.is-visible {
         animation: line-draw 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
         animation-delay: var(--line-delay, 0ms);
     }
+    .block-reveal-box {
+        transform: translateX(-101%);
+        will-change: transform;
+    }
+    .block-reveal-text {
+        opacity: 0;
+    }
+    html.js-reveal .reveal.is-visible .block-reveal-box {
+        animation: blockBox 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
+        animation-delay: var(--d, 0s);
+    }
+    html.js-reveal .reveal.is-visible .block-reveal-text {
+        animation: blockText 0.01s both;
+        animation-delay: calc(var(--d, 0s) + 0.42s);
+    }
+    html:not(.js-reveal) .block-reveal-text {
+        opacity: 1;
+    }
+    html:not(.js-reveal) .block-reveal-box {
+        display: none;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -290,6 +331,12 @@ html.js-reveal .reveal-right.is-visible {
         opacity: 1 !important;
         transform: none !important;
         transition: none !important;
+    }
+    .block-reveal-text {
+        opacity: 1 !important;
+    }
+    .block-reveal-box {
+        display: none !important;
     }
     *,
     *::before,
@@ -341,6 +388,140 @@ html.js-reveal .reveal-right.is-visible {
     animation-play-state: paused;
 }
 
+/* ── Service card hover: blue fill from bottom + glow border ── */
+.service-card-hover {
+    position: relative;
+    overflow: hidden;
+    transition: border-color 300ms ease, box-shadow 300ms ease;
+}
+.service-card-hover::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: var(--color-brand-600);
+    clip-path: inset(100% 0 0 0);
+    transition: clip-path 500ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    will-change: clip-path;
+    pointer-events: none;
+}
+.service-card-hover:hover {
+    border-color: var(--color-brand-400);
+    box-shadow: 0 0 0 1px var(--color-brand-400), 0 12px 32px -12px rgb(37 99 235 / 0.3);
+}
+.service-card-hover:hover::before {
+    clip-path: inset(0 0 0 0);
+}
+.service-card-hover > * {
+    position: relative;
+    z-index: 1;
+}
+
+/* Teks jadi putih saat biru naik */
+.service-card-hover:hover,
+.service-card-hover:hover * {
+    color: white !important;
+}
+.service-card-hover:hover a,
+.service-card-hover:hover a * {
+    color: white !important;
+}
+/* Khusus untuk elemen yang butuh kontras berbeda */
+.service-card-hover:hover .text-ink-4,
+.service-card-hover:hover .text-ink-3,
+.service-card-hover:hover .text-ink-2,
+.service-card-hover:hover .text-slate-400,
+.service-card-hover:hover .text-slate-500,
+.service-card-hover:hover .text-slate-600 {
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+.service-card-hover:hover .text-emerald-500 {
+    color: #6ee7b7 !important;
+}
+/* Icon background jadi transparan saat hover biar nyatu dengan biru */
+.service-card-hover:hover [class*="bg-brand-50"],
+.service-card-hover:hover [class*="bg-brand-100"],
+.service-card-hover:hover [class*="bg-blue-50"],
+.service-card-hover:hover [class*="bg-white"],
+.service-card-hover:hover .ring-1 {
+    background-color: transparent !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+}
+.service-card-hover:hover .dark\:bg-brand-500\/10 {
+    background-color: transparent !important;
+}
+
+/* ── Service card hover LIGHT (untuk card kecil Joki/Paket) ── */
+.service-card-hover-light {
+    position: relative;
+    overflow: hidden;
+    transition: border-color 300ms ease, box-shadow 300ms ease;
+}
+.service-card-hover-light::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: var(--color-brand-300); /* biru muda */
+    clip-path: inset(100% 0 0 0);
+    transition: clip-path 500ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    will-change: clip-path;
+    pointer-events: none;
+}
+.service-card-hover-light:hover {
+    border-color: var(--color-brand-300);
+    box-shadow: 0 0 0 1px var(--color-brand-300), 0 12px 32px -12px rgb(147 197 253 / 0.35);
+}
+.service-card-hover-light:hover::before {
+    clip-path: inset(0 0 0 0);
+}
+.service-card-hover-light > * {
+    position: relative;
+    z-index: 1;
+}
+
+/* Teks tetap gelap di atas biru muda */
+.service-card-hover-light:hover,
+.service-card-hover-light:hover * {
+    color: var(--color-ink) !important;
+}
+.service-card-hover-light:hover a,
+.service-card-hover-light:hover a * {
+    color: var(--color-ink) !important;
+}
+.service-card-hover-light:hover .text-ink-4,
+.service-card-hover-light:hover .text-ink-3,
+.service-card-hover-light:hover .text-ink-2,
+.service-card-hover-light:hover .text-slate-400,
+.service-card-hover-light:hover .text-slate-500,
+.service-card-hover-light:hover .text-slate-600 {
+    color: var(--color-ink-2) !important;
+}
+.service-card-hover-light:hover .text-emerald-500 {
+    color: #059669 !important;
+}
+/* Icon background tetap putih tapi border biru muda */
+.service-card-hover-light:hover [class*="bg-white"],
+.service-card-hover-light:hover [class*="bg-brand-50"],
+.service-card-hover-light:hover .ring-1 {
+    background-color: white !important;
+    border-color: var(--color-brand-300) !important;
+}
+.service-card-hover-light:hover .dark\:bg-white {
+    background-color: var(--t-card) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .service-card-hover::before,
+    .service-card-hover-light::before {
+        transition: none;
+    }
+    .service-card-hover,
+    .service-card-hover-light {
+        transition: none;
+    }
+}
+
 /* ── Thin elegant scrollbar ── */
 ::-webkit-scrollbar {
     width: 9px;
@@ -366,4 +547,17 @@ html.js-reveal .reveal-right.is-visible {
 .dark ::-webkit-scrollbar-thumb:hover {
     background: rgb(148 163 184 / 0.45);
     background-clip: content-box;
+}
+
+/* ── Performance: content-visibility untuk sections below-fold ──
+   Browser skip paint & layout untuk off-screen sections.
+   Desain & animasi tidak berubah — hanya rendering hint.
+   contain-intrinsic-size mencegah CLS saat section masuk viewport. */
+.cv-auto {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 600px;
+}
+.cv-auto-sm {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 400px;
 }

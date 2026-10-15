@@ -7,8 +7,8 @@ use App\Models\ContactMessage;
 use App\Models\Faq;
 use App\Models\Invoice;
 use App\Models\Message;
-use App\Models\PricingPlan;
 use App\Models\Portfolio;
+use App\Models\PricingPlan;
 use App\Models\Project;
 use App\Models\ProjectUpdate;
 use App\Models\Service;
@@ -134,7 +134,7 @@ class DatabaseSeeder extends Seeder
                 'category' => 'Aplikasi Web',
                 'client_name' => 'Waroeng Kita Group',
                 'year' => 2025,
-                'description' => "Aplikasi web point-of-sale multi-outlet yang menangani 12.000+ transaksi harian di 8 cabang. Dibangun dengan Laravel queues untuk sinkronisasi cetak struk, dashboard penjualan real-time, dan mode PWA offline-first untuk koneksi yang tidak stabil.",
+                'description' => 'Aplikasi web point-of-sale multi-outlet yang menangani 12.000+ transaksi harian di 8 cabang. Dibangun dengan Laravel queues untuk sinkronisasi cetak struk, dashboard penjualan real-time, dan mode PWA offline-first untuk koneksi yang tidak stabil.',
                 'tech_stack' => ['Laravel', 'React', 'MySQL', 'Redis', 'PWA'],
                 'is_featured' => true,
                 'sort_order' => 1,
@@ -145,7 +145,7 @@ class DatabaseSeeder extends Seeder
                 'category' => 'Aplikasi Web',
                 'client_name' => 'Sehatin Health Tech',
                 'year' => 2025,
-                'description' => "Platform telemedis yang menghubungkan 200+ dokter dengan pasien melalui konsultasi video, resep elektronik, dan pengiriman farmasi terintegrasi. Arsitektur yang memperhatikan privasi dengan penyimpanan chat terenkripsi dan audit trail.",
+                'description' => 'Platform telemedis yang menghubungkan 200+ dokter dengan pasien melalui konsultasi video, resep elektronik, dan pengiriman farmasi terintegrasi. Arsitektur yang memperhatikan privasi dengan penyimpanan chat terenkripsi dan audit trail.',
                 'tech_stack' => ['Laravel', 'Inertia', 'React', 'WebRTC', 'MySQL'],
                 'is_featured' => true,
                 'sort_order' => 2,
@@ -156,7 +156,7 @@ class DatabaseSeeder extends Seeder
                 'category' => 'Website',
                 'client_name' => 'Arunika Coffee Roasters',
                 'year' => 2024,
-                'description' => "Website brand yang layak penghargaan untuk roaster kopi spesialti. Storytelling berbasis scroll, panduan seduh interaktif, dan pencari lokasi toko. Mencapai performa Lighthouse 99 meski dengan art direction yang berat.",
+                'description' => 'Website brand yang layak penghargaan untuk roaster kopi spesialti. Storytelling berbasis scroll, panduan seduh interaktif, dan pencari lokasi toko. Mencapai performa Lighthouse 99 meski dengan art direction yang berat.',
                 'tech_stack' => ['Laravel', 'Tailwind CSS', 'GSAP', 'Vite'],
                 'is_featured' => true,
                 'sort_order' => 3,
@@ -167,7 +167,7 @@ class DatabaseSeeder extends Seeder
                 'category' => 'Dasbor',
                 'client_name' => 'Fintava Financial',
                 'year' => 2024,
-                'description' => "Dashboard analitik keuangan real-time yang menampilkan 50rb+ titik data dengan tabel tervirtualisasi dan streaming grafik melalui WebSocket. Tampilan berbasis peran untuk analis, manajer, dan petugas kepatuhan.",
+                'description' => 'Dashboard analitik keuangan real-time yang menampilkan 50rb+ titik data dengan tabel tervirtualisasi dan streaming grafik melalui WebSocket. Tampilan berbasis peran untuk analis, manajer, dan petugas kepatuhan.',
                 'tech_stack' => ['Laravel', 'React', 'TypeScript', 'WebSocket', 'Docker'],
                 'is_featured' => true,
                 'sort_order' => 4,
@@ -178,7 +178,7 @@ class DatabaseSeeder extends Seeder
                 'category' => 'Aplikasi Web',
                 'client_name' => 'KelasDev Academy',
                 'year' => 2024,
-                'description' => "Platform kursus dengan streaming video, engine kuis, pembuatan sertifikat, dan manajemen kohort. Melayani 15.000+ siswa dengan dukungan Stripe & payment gateway lokal.",
+                'description' => 'Platform kursus dengan streaming video, engine kuis, pembuatan sertifikat, dan manajemen kohort. Melayani 15.000+ siswa dengan dukungan Stripe & payment gateway lokal.',
                 'tech_stack' => ['Laravel', 'Inertia', 'React', 'MySQL', 'FFmpeg'],
                 'is_featured' => false,
                 'sort_order' => 5,
@@ -189,7 +189,7 @@ class DatabaseSeeder extends Seeder
                 'category' => 'Perbaikan & Audit',
                 'client_name' => 'TokoBiru Marketplace',
                 'year' => 2025,
-                'description' => "Penyelamatan darurat situs e-commerce Laravel 5 yang bermasalah: menelusuri kegagalan checkout hingga ke race condition, migrasi ke Laravel 11 tanpa downtime, memangkas waktu muat halaman dari 8 detik menjadi 1,2 detik, dan mendokumentasikan seluruh prosesnya.",
+                'description' => 'Penyelamatan darurat situs e-commerce Laravel 5 yang bermasalah: menelusuri kegagalan checkout hingga ke race condition, migrasi ke Laravel 11 tanpa downtime, memangkas waktu muat halaman dari 8 detik menjadi 1,2 detik, dan mendokumentasikan seluruh prosesnya.',
                 'tech_stack' => ['Laravel', 'MySQL', 'Redis', 'New Relic'],
                 'is_featured' => false,
                 'sort_order' => 6,

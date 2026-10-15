@@ -2,6 +2,7 @@ import type { Faq, PricingPlan } from '@/types';
 import { R } from '@/lib/routes';
 import { cn, formatIDR } from '@/lib/utils';
 import { PublicLayout } from '@/Components/layout/PublicLayout';
+import { SeoHead } from '@/Components/SeoHead';
 import { Reveal } from '@/Components/Reveal';
 import { ButtonLink, Eyebrow, SectionHeading } from '@/Components/ui';
 import {
@@ -20,6 +21,10 @@ interface Props {
 export default function Pricing({ plans, faqs }: Props) {
     return (
         <PublicLayout>
+            <SeoHead
+                title="Paket Harga & Biaya Layanan"
+                description="Pilihan paket harga transparan tanpa biaya tersembunyi untuk kebutuhan pembuatan website dan aplikasi web."
+            />
             <section className="relative overflow-hidden pt-17">
                 <div className="bg-grid mask-fade-y pointer-events-none absolute inset-0" aria-hidden />
                 <div className="relative mx-auto max-w-7xl px-5 pt-16 pb-12 text-center lg:px-8 lg:pt-24">

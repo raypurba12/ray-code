@@ -48,6 +48,7 @@ class HandleInertiaRequests extends Middleware
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),
             ],
+            'invoice_payload' => fn () => $request->session()->get('invoice_payload'),
             'settings' => fn () => [
                 'site_name' => Setting::get('site_name', 'Raycode'),
                 'site_tagline' => Setting::get('site_tagline', 'We build digital products that ship.'),

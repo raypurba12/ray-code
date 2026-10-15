@@ -1,10 +1,12 @@
 import type { Service } from '@/types';
 import { R } from '@/lib/routes';
 import { cn, formatIDR } from '@/lib/utils';
+import { trackEvent } from '@/lib/analytics';
 import { PublicLayout } from '@/Components/layout/PublicLayout';
+import { SeoHead } from '@/Components/SeoHead';
 import { Reveal } from '@/Components/Reveal';
 import { Badge, ButtonLink, Eyebrow } from '@/Components/ui';
-import { usePage } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { Calculator, Check, Zap } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -53,6 +55,10 @@ export default function Estimator({ services, complexities: propComplexities, fe
     const [complexity, setComplexity] = useState<string>(complexities[0]?.id ?? 'simple');
     const [features, setFeatures] = useState<string[]>([]);
     const [urgency, setUrgency] = useState<string>(urgencies.find((u) => u.id === 'standard')?.id ?? urgencies[0]?.id ?? 'standard');
+    const [wa, setWa] = useState('');
+    const [email, setEmail] = useState('');
+    const [website, setWebsite] = useState(''); // honeypot
+    const [saving, setSaving] = useState(false);
 
     const estimate = useMemo(() => {
         const base = services.find((s) => s.id === serviceId)?.starting_price ?? 0;
@@ -67,8 +73,39 @@ export default function Estimator({ services, complexities: propComplexities, fe
     const toggleFeature = (id: string) =>
         setFeatures((current) => (current.includes(id) ? current.filter((f) => f !== id) : [...current, id]));
 
+    const handleContinue = () => {
+        setSaving(true);
+        trackEvent('estimator_submit', {
+            service_id: serviceId,
+            complexity,
+            urgency,
+            features_count: features.length,
+            low: estimate.low,
+            high: estimate.high,
+        });
+        const payload = {
+            service_id: serviceId,
+            complexity,
+            features,
+            urgency,
+            low: estimate.low,
+            high: estimate.high,
+            wa: wa || undefined,
+            email: email || undefined,
+            website, // honeypot
+        };
+        router.post('/estimator/lead', payload, {
+            preserveScroll: true,
+            onFinish: () => setSaving(false),
+        });
+    };
+
     return (
         <PublicLayout>
+            <SeoHead
+                title="Kalkulator Estimasi Biaya Proyek"
+                description="Hitung estimasi biaya & waktu pengerjaan pembuatan website atau aplikasi web secara interaktif dalam 30 detik."
+            />
             <section className="relative overflow-hidden pt-17">
                 <div className="bg-grid mask-fade-y pointer-events-none absolute inset-0" aria-hidden />
                 <div className="relative mx-auto max-w-7xl px-5 pt-16 pb-24 lg:px-8 lg:pt-24 lg:pb-32">
@@ -208,9 +245,20 @@ export default function Estimator({ services, complexities: propComplexities, fe
                                         <EstimateRow label="Tenggat waktu" value={urgencies.find((u) => u.id === urgency)?.label.split(' (')[0] ?? ''} />
                                     </ul>
 
-                                    <ButtonLink href={`${orderHref}?service=${services.find((s) => s.id === serviceId)?.slug}&budget=${estimate.low}&title=${encodeURIComponent('Proyek via estimasi')}`} className="mt-7 w-full" size="lg">
-                                        Lanjutkan dengan spesifikasi ini →
-                                    </ButtonLink>
+                                    {/* optional contact for follow-up */}
+                                    <div className="mt-6 space-y-2 border-t border-dashed border-line pt-4">
+                                        <p className="text-xs font-semibold text-ink">Mau kami follow-up? (opsional)</p>
+                                        <div className="grid gap-2 sm:grid-cols-2">
+                                            <input value={wa} onChange={e=>setWa(e.target.value)} placeholder="WA (08xxx)" className="rounded-lg border border-line bg-card px-3 py-2 text-sm placeholder:text-ink-4 focus:border-brand-400 focus:outline-none" />
+                                            <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email" type="email" className="rounded-lg border border-line bg-card px-3 py-2 text-sm placeholder:text-ink-4 focus:border-brand-400 focus:outline-none" />
+                                        </div>
+                                        <input value={website} onChange={e=>setWebsite(e.target.value)} placeholder="website" className="hidden" tabIndex={-1} autoComplete="off" aria-hidden />
+                                    </div>
+
+                                    <button onClick={handleContinue} disabled={saving} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-bold text-white shadow hover:bg-brand-700 disabled:opacity-60">
+                                        {saving ? 'Menyimpan...' : 'Lanjutkan dengan spesifikasi ini →'}
+                                    </button>
+                                    <a href={`${orderHref}?service=${services.find((s) => s.id === serviceId)?.slug}&budget=${estimate.low}`} className="mt-2 block text-center text-xs font-medium text-ink-3 hover:text-brand-600">Lewati, langsung ke order →</a>
                                     <p className="mt-3 text-center text-[11px] leading-relaxed text-ink-4">
                                         Estimasi sudah termasuk eksplorasi, desain, pengembangan & peluncuran. Penawaran final dikonfirmasi setelah diskusi penjajakan gratis.
                                     </p>

@@ -29,6 +29,7 @@ export interface PortfolioItem {
     client_name: string;
     year: number;
     thumbnail_url: string | null;
+    video_url?: string | null;
     gallery_urls?: string[] | null;
     description: string;
     tech_stack: string[];
@@ -45,6 +46,8 @@ export interface PricingPlan {
     unit: string;
     features: string[];
     is_popular: boolean;
+    is_active?: boolean;
+    sort_order?: number;
     cta_text: string;
 }
 
@@ -78,6 +81,16 @@ export interface BlogPost {
     author?: { id: number; name: string } | null;
 }
 
+export interface ProjectFile {
+    id: number;
+    file_name: string;
+    disk_path: string;
+    mime?: string | null;
+    size: number;
+    version: number;
+    created_at: string;
+}
+
 export interface ProjectUpdate {
     id: number;
     title: string;
@@ -99,10 +112,12 @@ export interface Project {
     started_at?: string | null;
     completed_at?: string | null;
     created_at: string;
+    order_code?: string;
     user?: Pick<User, 'id' | 'name' | 'email'>;
     service?: Pick<Service, 'id' | 'title' | 'icon' | 'slug'> | null;
     updates?: ProjectUpdate[];
     invoices?: Invoice[];
+    files?: ProjectFile[];
 }
 
 export interface Invoice {
@@ -114,8 +129,13 @@ export interface Invoice {
     tax: number;
     total: number;
     status: 'unpaid' | 'paid' | 'cancelled';
+    snap_token?: string | null;
+    payment_type?: string | null;
+    payment_status?: string | null;
     due_date?: string | null;
     paid_at?: string | null;
+    kind?: 'dp' | 'final' | 'full' | null;
+    label?: string | null;
     created_at: string;
     project?: { id: number; title: string } | (Project & { service?: Service });
     user?: Pick<User, 'id' | 'name' | 'email' | 'company'>;

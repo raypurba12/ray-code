@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
-use App\Models\Project;
+use App\Jobs\NotifyOrderCreated;
 use App\Models\Service;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -38,6 +38,8 @@ class OrderController extends Controller
             'specs' => $request->input('specs'),
             'status' => 'pending',
         ]);
+
+        NotifyOrderCreated::dispatch($project);
 
         return redirect()
             ->route('client.projects.show', $project)

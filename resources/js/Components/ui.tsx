@@ -1,8 +1,13 @@
 import { cn } from '@/lib/utils';
 import type { Invoice, Project } from '@/types';
 import { Link } from '@inertiajs/react';
-import { Star } from 'lucide-react';
+import { HelpCircle, Star } from 'lucide-react';
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
+
+export { ToastProvider, useToast, type ToastType } from './ToastProvider';
+export { ConfirmModal } from './ConfirmModal';
+export { useConfirm } from './useConfirm';
+export { AdminBreadcrumb } from './AdminBreadcrumb';
 
 /* ── Button ──────────────────────────────────────────────── */
 export type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'dark';
@@ -185,35 +190,71 @@ export function SectionHeading({
 const fieldClasses =
     'w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition-colors focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500 dark:focus:border-white dark:focus:ring-white/10';
 
+export function HelpTooltip({ text }: { text: string }) {
+    return (
+        <span className="group relative inline-flex items-center ml-1.5 cursor-help text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300">
+            <HelpCircle className="size-3.5" />
+            <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden w-52 rounded-lg bg-slate-900 px-2.5 py-1.5 text-left text-xs font-normal text-white shadow-xl group-hover:block dark:bg-slate-800 dark:text-slate-100 z-50 border border-slate-700">
+                {text}
+            </span>
+        </span>
+    );
+}
+
+function FieldLabel({ label, required, hint, tooltip }: { label?: string; required?: boolean; hint?: string; tooltip?: string }) {
+    if (!label) return null;
+    return (
+        <div className="mb-1.5 flex items-center justify-between">
+            <span className="flex items-center text-sm font-medium text-slate-700 dark:text-slate-300">
+                {label}
+                {required && <span className="ml-1 text-red-500 font-bold" title="Wajib diisi">*</span>}
+                {tooltip && <HelpTooltip text={tooltip} />}
+            </span>
+            {hint && <span className="text-xs text-slate-400 dark:text-slate-500 font-normal">{hint}</span>}
+        </div>
+    );
+}
+
 function FieldError({ error }: { error?: string }) {
     if (!error) return null;
     return <p className="mt-1.5 text-xs font-medium text-red-600 dark:text-red-400">{error}</p>;
 }
 
-export function Input({ label, error, className, ...props }: InputHTMLAttributes<HTMLInputElement> & { label?: string; error?: string }) {
+export interface FormFieldExtraProps {
+    label?: string;
+    error?: string;
+    hint?: string;
+    tooltip?: string;
+    required?: boolean;
+}
+
+export function Input({ label, error, hint, tooltip, required, className, ...props }: InputHTMLAttributes<HTMLInputElement> & FormFieldExtraProps) {
+    const isRequired = required ?? props.required;
     return (
         <label className="block">
-            {label && <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">{label}</span>}
+            <FieldLabel label={label} required={isRequired} hint={hint} tooltip={tooltip} />
             <input className={cn(fieldClasses, error && 'border-red-300 focus:ring-red-100 dark:border-red-600', className)} {...props} />
             <FieldError error={error} />
         </label>
     );
 }
 
-export function Textarea({ label, error, className, rows = 4, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement> & { label?: string; error?: string }) {
+export function Textarea({ label, error, hint, tooltip, required, className, rows = 4, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement> & FormFieldExtraProps) {
+    const isRequired = required ?? props.required;
     return (
         <label className="block">
-            {label && <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">{label}</span>}
+            <FieldLabel label={label} required={isRequired} hint={hint} tooltip={tooltip} />
             <textarea rows={rows} className={cn(fieldClasses, 'resize-y', error && 'border-red-300 focus:ring-red-100 dark:border-red-600', className)} {...props} />
             <FieldError error={error} />
         </label>
     );
 }
 
-export function Select({ label, error, className, children, ...props }: SelectHTMLAttributes<HTMLSelectElement> & { label?: string; error?: string }) {
+export function Select({ label, error, hint, tooltip, required, className, children, ...props }: SelectHTMLAttributes<HTMLSelectElement> & FormFieldExtraProps) {
+    const isRequired = required ?? props.required;
     return (
         <label className="block">
-            {label && <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">{label}</span>}
+            <FieldLabel label={label} required={isRequired} hint={hint} tooltip={tooltip} />
             <select className={cn(fieldClasses, 'cursor-pointer', error && 'border-red-300 dark:border-red-600', className)} {...props}>
                 {children}
             </select>

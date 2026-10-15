@@ -15,6 +15,11 @@ class ContactController extends Controller
 
     public function store(Request $request)
     {
+        // Honeypot P0-3 — bot yang isi field website dianggap spam, balasan sukses palsu (jangan simpan)
+        if ($request->filled('website')) {
+            return back()->with('success', 'Thanks! Your message has been received. We\'ll reply within 24 hours.');
+        }
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
