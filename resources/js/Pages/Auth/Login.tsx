@@ -106,12 +106,6 @@ export default function Login() {
                                 </li>
                             ))}
                         </ul>
-
-                        <div className="mt-14 rounded-xl border border-slate-800 bg-black/60 p-5 font-mono text-xs leading-6 text-slate-500 backdrop-blur">
-                            <p><span className="text-emerald-400">$</span> whoami</p>
-                            <p className="text-slate-300">demo client → <span className="text-brand-300">client@raycode.dev</span> / password</p>
-                            <p className="text-slate-300">admin panel → <span className="text-brand-300">admin@raycode.dev</span> / password</p>
-                        </div>
                     </Reveal>
                 </div>
             </section>
