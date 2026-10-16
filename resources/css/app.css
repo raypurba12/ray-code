@@ -388,137 +388,93 @@ html.js-reveal .reveal-right.is-visible {
     animation-play-state: paused;
 }
 
-/* ── Service card hover: blue fill from bottom + glow border ── */
-.service-card-hover {
+/* ── Service card hover: blue fill bottom→top (scaleY) + glow border ──
+   ::before sebagai layer fill (transform compositor-friendly, bukan clip-path).
+   Konten di atas layer (z-index 1). Teks/ikon flip putih mengikuti durasi fill
+   agar kontras di light & dark. Mendukung :hover, :focus-visible,
+   :has(:focus-visible) (kartu non-focusable dengan CTA di dalamnya),
+   dan prefers-reduced-motion. */
+
+:is(.service-card-hover, .service-card-hover-light) {
     position: relative;
     overflow: hidden;
     transition: border-color 300ms ease, box-shadow 300ms ease;
 }
-.service-card-hover::before {
+
+:is(.service-card-hover, .service-card-hover-light)::before {
     content: '';
     position: absolute;
     inset: 0;
     z-index: 0;
     background: var(--color-brand-600);
-    clip-path: inset(100% 0 0 0);
-    transition: clip-path 500ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    will-change: clip-path;
+    transform: scaleY(0);
+    transform-origin: bottom;
+    transition: transform 500ms cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
     pointer-events: none;
 }
-.service-card-hover:hover {
+
+:is(.service-card-hover, .service-card-hover-light):is(:hover, :focus-visible, :has(:focus-visible))::before {
+    transform: scaleY(1);
+}
+
+:is(.service-card-hover, .service-card-hover-light):is(:hover, :focus-visible, :has(:focus-visible)) {
     border-color: var(--color-brand-400);
-    box-shadow: 0 0 0 1px var(--color-brand-400), 0 12px 32px -12px rgb(37 99 235 / 0.3);
+    box-shadow:
+        0 0 0 1px var(--color-brand-400),
+        0 12px 32px -12px rgb(37 99 235 / 0.35);
 }
-.service-card-hover:hover::before {
-    clip-path: inset(0 0 0 0);
-}
-.service-card-hover > * {
+
+:is(.service-card-hover, .service-card-hover-light) > * {
     position: relative;
     z-index: 1;
 }
 
-/* Teks jadi putih saat biru naik */
-.service-card-hover:hover,
-.service-card-hover:hover * {
-    color: white !important;
+/* Teks & ikon putih saat fill aktif — kontras baik di kedua mode */
+:is(.service-card-hover, .service-card-hover-light):is(:hover, :focus-visible, :has(:focus-visible)),
+:is(.service-card-hover, .service-card-hover-light):is(:hover, :focus-visible, :has(:focus-visible)) * {
+    color: #fff !important;
 }
-.service-card-hover:hover a,
-.service-card-hover:hover a * {
-    color: white !important;
+
+/* Teks sekunder sedikit diredupkan agar hierarki tetap terbaca */
+:is(.service-card-hover, .service-card-hover-light):is(:hover, :focus-visible, :has(:focus-visible)) :is(.text-ink-2, .text-ink-3, .text-ink-4, .text-slate-400, .text-slate-500, .text-slate-600) {
+    color: rgb(255 255 255 / 0.85) !important;
 }
-/* Khusus untuk elemen yang butuh kontras berbeda */
-.service-card-hover:hover .text-ink-4,
-.service-card-hover:hover .text-ink-3,
-.service-card-hover:hover .text-ink-2,
-.service-card-hover:hover .text-slate-400,
-.service-card-hover:hover .text-slate-500,
-.service-card-hover:hover .text-slate-600 {
-    color: rgba(255, 255, 255, 0.9) !important;
-}
-.service-card-hover:hover .text-emerald-500 {
+
+:is(.service-card-hover, .service-card-hover-light):is(:hover, :focus-visible, :has(:focus-visible)) .text-emerald-500 {
     color: #6ee7b7 !important;
 }
-/* Icon background jadi transparan saat hover biar nyatu dengan biru */
-.service-card-hover:hover [class*="bg-brand-50"],
-.service-card-hover:hover [class*="bg-brand-100"],
-.service-card-hover:hover [class*="bg-blue-50"],
-.service-card-hover:hover [class*="bg-white"],
-.service-card-hover:hover .ring-1 {
-    background-color: transparent !important;
-    border-color: rgba(255, 255, 255, 0.3) !important;
-}
-.service-card-hover:hover .dark\:bg-brand-500\/10 {
-    background-color: transparent !important;
+
+/* Chip ikon / tombol: kaca transparan agar menyatu dengan fill biru */
+:is(.service-card-hover, .service-card-hover-light):is(:hover, :focus-visible, :has(:focus-visible)) :is([class*="bg-white"], [class*="bg-blue-50"], [class*="bg-blue-100"], [class*="bg-brand-50"], [class*="bg-brand-100"]) {
+    background-color: rgb(255 255 255 / 0.14) !important;
+    border-color: rgb(255 255 255 / 0.35) !important;
 }
 
-/* ── Service card hover LIGHT (untuk card kecil Joki/Paket) ── */
-.service-card-hover-light {
-    position: relative;
-    overflow: hidden;
-    transition: border-color 300ms ease, box-shadow 300ms ease;
-}
-.service-card-hover-light::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    background: var(--color-brand-300); /* biru muda */
-    clip-path: inset(100% 0 0 0);
-    transition: clip-path 500ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    will-change: clip-path;
-    pointer-events: none;
-}
-.service-card-hover-light:hover {
-    border-color: var(--color-brand-300);
-    box-shadow: 0 0 0 1px var(--color-brand-300), 0 12px 32px -12px rgb(147 197 253 / 0.35);
-}
-.service-card-hover-light:hover::before {
-    clip-path: inset(0 0 0 0);
-}
-.service-card-hover-light > * {
-    position: relative;
-    z-index: 1;
+:is(.service-card-hover, .service-card-hover-light):is(:hover, :focus-visible, :has(:focus-visible)) [class*="ring-1"] {
+    box-shadow: none !important;
 }
 
-/* Teks tetap gelap di atas biru muda */
-.service-card-hover-light:hover,
-.service-card-hover-light:hover * {
-    color: var(--color-ink) !important;
+/* Transisi warna teks mengikuti naiknya fill (bukan flip instan).
+   Elemen dengan utility transition-* sendiri tidak diutak-atik. */
+:is(.service-card-hover, .service-card-hover-light) *:not([class*="transition-"]) {
+    transition:
+        color 450ms cubic-bezier(0.22, 1, 0.36, 1),
+        background-color 450ms cubic-bezier(0.22, 1, 0.36, 1),
+        border-color 450ms cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 450ms cubic-bezier(0.22, 1, 0.36, 1);
 }
-.service-card-hover-light:hover a,
-.service-card-hover-light:hover a * {
-    color: var(--color-ink) !important;
-}
-.service-card-hover-light:hover .text-ink-4,
-.service-card-hover-light:hover .text-ink-3,
-.service-card-hover-light:hover .text-ink-2,
-.service-card-hover-light:hover .text-slate-400,
-.service-card-hover-light:hover .text-slate-500,
-.service-card-hover-light:hover .text-slate-600 {
-    color: var(--color-ink-2) !important;
-}
-.service-card-hover-light:hover .text-emerald-500 {
-    color: #059669 !important;
-}
-/* Icon background tetap putih tapi border biru muda */
-.service-card-hover-light:hover [class*="bg-white"],
-.service-card-hover-light:hover [class*="bg-brand-50"],
-.service-card-hover-light:hover .ring-1 {
-    background-color: white !important;
-    border-color: var(--color-brand-300) !important;
-}
-.service-card-hover-light:hover .dark\:bg-white {
-    background-color: var(--t-card) !important;
+
+/* Focus ring tetap terbaca saat fill biru aktif */
+:is(.service-card-hover, .service-card-hover-light):is(:hover, :focus-visible, :has(:focus-visible)) :focus-visible {
+    outline-color: #fff;
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .service-card-hover::before,
-    .service-card-hover-light::before {
-        transition: none;
-    }
-    .service-card-hover,
-    .service-card-hover-light {
-        transition: none;
+    :is(.service-card-hover, .service-card-hover-light),
+    :is(.service-card-hover, .service-card-hover-light)::before,
+    :is(.service-card-hover, .service-card-hover-light) * {
+        transition: none !important;
     }
 }
 

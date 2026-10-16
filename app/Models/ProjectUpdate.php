@@ -12,4 +12,9 @@ class ProjectUpdate extends Model
     {
         return $this->belongsTo(Project::class);
     }
+
+    public function files()
+    {
+        return $this->hasMany(ProjectFile::class);
+    }
 }

@@ -17,6 +17,14 @@ export function formatIDRShort(value: number): string {
     return String(value);
 }
 
+export function formatBytes(value?: number | null): string {
+    if (!value || value <= 0) return '—';
+    if (value >= 1_073_741_824) return `${(value / 1_073_741_824).toFixed(1)} GB`;
+    if (value >= 1_048_576) return `${(value / 1_048_576).toFixed(1)} MB`;
+    if (value >= 1_024) return `${Math.round(value / 1_024)} KB`;
+    return `${value} B`;
+}
+
 export function formatDate(value?: string | Date | null, opts?: Intl.DateTimeFormatOptions): string {
     if (!value) return '—';
     const date = typeof value === 'string' ? new Date(value) : value;

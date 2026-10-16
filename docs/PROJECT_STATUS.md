@@ -1,8 +1,8 @@
 # PROJECT_STATUS — Raycode Studio Platform
 
-> **Last Verified:** 2026-10-11 (UTC+7, sesi Performance Audit — lighthouse 29)  
-> **Branch:** `main` — Commit `6d5b1e7` + working directory P0-1 s/d P0-5 + P1-4 (.gitignore) + Perf audit (belum commit)  
-> **Verified by:** Inspeksi `npm run build` (1.106 MB / 58 file) + `public/images` 4,1 MB + `portfolio_videos` 5,2 MB + `app.blade.php` + `vite.config.ts` — lihat `docs/WORKLOG.md`  
+> **Last Verified:** 2026-10-16 (UTC+7, sesi Blog Cover Upload, Fix `/admin/portfolios` blank, Login khusus admin, Hover fill card layanan, Audit + P0/P1 Pantau Pesanan: bayar per-invoice/noindex/unduh file/WA notif/histori foto/ringkasan/stepper/countdown/salin, Fix upload foto admin nested-form + meta csrf, Deploy batch ke GitHub)**  
+> **Branch:** `feature/admin-improvements-phase-2` — HEAD `a26a02b` + docs/deploy commit (origin/main masih `6d5b1e7`; branch ini adalah jalur deploy)  
+> **Verified by:** 2026-10-16 — `php artisan test` 64 passed + 1 skipped (251 assertions) + `npm run build` OK + `pint --test` passed + emulasi upload HTTP nyata (lihat `docs/WORKLOG.md`; riwayat lama: inspeksi `npm run build` 1.106 MB/58 file + `public/images` 4,1 MB + `portfolio_videos` 5,2 MB + `vite.config.ts`)  
 > **Aturan:** Jangan anggap baris di dokumen ini benar jika bertanda `NEEDS RE-VERIFY` atau berumur >1 sesi tanpa cek ulang `Read`/`bash`.
 
 ---
@@ -42,7 +42,7 @@
 
 | Fitur | Status | Bukti / Catatan Verifikasi 2026-10-10 |
 |---|---|---|
-| **Auth login/register/logout** + throttle 5/1 + session regenerate + role redirect | `VERIFIED` | `AuthController.php:15-38`, `routes/web.php:65-70`, `tests/Feature/AuthTest.php` (6 tests passed) |
+| **Auth login (khusus admin) + logout** + throttle 5/1 + session regenerate; **register dinonaktifkan** (redirect `/login`) | `VERIFIED` (2026-10-16) | `AuthController.php` (`Auth::validate` → cek `isAdmin` → `Auth::login`; `showRegister`/`register` redirect), tombol login disembunyikan di `PublicLayout.tsx` (desktop+mobile), link Daftar dihapus dari `Login.tsx`/`ForgotPassword.tsx`, CTA order `Estimator.tsx` → `/cara-pesan`; `tests/Feature/AuthTest.php` (client ditolak, register tidak membuat user) — full suite 48 passed (118 assertions) |
 | **Password reset / forgot** `password.request/email/reset/update` + throttle 5/1, token 60m `password_reset_tokens` | `VERIFIED` | `AuthController.php:66-125` (showForgot, sendResetLink, showReset, reset), `routes/web.php:72-77`, `ForgotPassword.tsx:1`, `ResetPassword.tsx:1`, `Login.tsx:79` link Lupa, `routes.ts:20`, `PasswordResetTest.php:1` 7 passed, `npm run build` includes `ForgotPassword-DLgldE-d.js` + `ResetPassword-4M5LvNt4.js` |
 | **Email verify** `MustVerifyEmail` | `NOT STARTED` (opsional P0-2) | `User.php` belum `MustVerifyEmail`, route `email/verify/*` belum ada — tidak diblokir, tapi client masih bisa login tanpa verify; dijadwalkan setelah P0-3 jika diperlukan enforce `verified` middleware |
 | **Service paket vs Joki satuan** (unifikasi `type ENUM`) | `IN PROGRESS` | `Service.php` sudah punya `type`, migrasi `2026_09_11_000002_add_type_to_services.php` & `migrate_joki_to_services.php` VERIFIED, tapi `Admin/JokiServiceController` + `Admin/ServiceController` masih terpisah, perlu merge UI — `NEEDS RE-VERIFY` setelah commit |
@@ -51,9 +51,12 @@
 | **Order Client** (`POST /dashboard/order`) | `VERIFIED` | `Client/OrderController.php`, `tests/Feature/OrderTest.php:48` passed |
 | **Admin Order Manual** (WA → create User+Project+Invoice DP 50% + Snap) | `VERIFIED` | `Admin/OrderController.php:34-133`, `routes/web.php:102-103`, DP label `dp 50%` |
 | **Project + order_code `RAY-YYYYMMDD-XXXX`** + `public_token` | `VERIFIED` | `Project.php:15-27 booted()`, migrasi `2026_09_11_000006` |
-| **Pantau Pesanan publik** `GET /pantau-pesanan?code=` + masking WA + multi-invoice | `VERIFIED` | `TrackOrderController.php:13-103`, `resources/js/Pages/Public/TrackOrder.tsx`, throttle `30,1`/`10,1` |
-| **Pay QRIS** `POST /track/{code}/pay` + short `GET /pay/{code}` + re-use token + RateLimiter 5/10m | `VERIFIED` | `TrackOrderController.php:105-136`, `MidtransService.php:31` |
-| **Invoice PDF** `GET /invoice/{code}/pdf` + kind dp/final/full | `VERIFIED` aman (signed + auth fallback) | `TrackOrderController.php:138-158` VERIFIED: `hasValidSignature()` atau `auth owner/admin` else 403; signed URL 30 menit via `URL::temporarySignedRoute` di `TrackOrderController.php:57` & `Admin/OrderController.php:107`; test `InvoicePdfSecurityTest.php:1` 5 passed |
+| **Pantau Pesanan publik** `GET /pantau-pesanan?code=` + masking WA + multi-invoice + `X-Robots-Tag: noindex` + ringkasan pembayaran + stepper + countdown token + salin kode/link | `VERIFIED` (2026-10-16) | `TrackOrderController.php` (`paymentUrl` hanya jika `snap_token_expires_at` future; payload `summary` total/paid/remaining + `snapTokenExpiresAt`), `resources/js/Pages/Public/TrackOrder.tsx` (`SeoHead noIndex`, stepper, `SnapCountdown`, `router.reload` refresh, clipboard), throttle `30,1`/`10,1` |
+| **Pay QRIS** `POST /track/{code}/pay` + short `GET /pay/{code}` + param `invoice` per kartu + fallback unpaid terlama + re-use token + RateLimiter 5/10m | `VERIFIED` (2026-10-16) | `TrackOrderController.php:114-155` (fix: sebelumnya selalu unpaid terbaru → tombol "Bayar DP" bisa membuat token invoice FINAL), hidden field `invoice` di `TrackOrder.tsx` 2 form bayar, test `TrackOrderTest.php` 6 passed, `MidtransService.php:31` |
+| **Invoice PDF** `GET /invoice/{code}/pdf` + kind dp/final/full + `X-Robots-Tag: noindex` | `VERIFIED` aman (signed + auth fallback) | `TrackOrderController.php:157-189` VERIFIED: `hasValidSignature()` atau `auth owner/admin` else 403 (copy 403 diperbarui — dashboard client nonaktif); signed URL 30 menit via `URL::temporarySignedRoute` di `TrackOrderController.php:62` & `Admin/OrderController.php:107`; test `InvoicePdfSecurityTest.php:1` 5 passed |
+| **Unduh file hasil di pantau** — signed 30m per file + zip (semua file yang diupload admin; fallback pesan bila php-zip absen) | `VERIFIED` (2026-10-16) | `routes/web.php` (`track.files.download`, `track.files.zip`, throttle `30,1`), `TrackOrderController` `downloadFile()`/`downloadFilesZip()` (signed ATAU owner/admin, cek `file.project_id`), payload `files`/`filesZipUrl` di `index()`; UI `TrackOrder.tsx` section "File Hasil"; test `TrackOrderTest.php` +3 (zip test skip: php-zip belum di-enable di lokal) |
+| **Notifikasi WA otomatis status/progress** ke klien (status berubah / progress berubah saja, try-catch non-blocking) | `VERIFIED` (2026-10-16) | `WhatsappService` `buildProjectUpdateMessage()`/`notifyProjectUpdate()` (skip bila tanpa phone); hook `Admin/OrderController@updateStatus` (bandingkan status lama) & `Admin/ProjectController@update` (progress berubah + note); test `AdminProjectNotificationTest.php` 4 passed |
+| **Histori progres di pantau** — foto + notes + tanggal otomatis dari upload admin di `/admin/projects` | `VERIFIED` (2026-10-16) | Migrasi `2026_10_16_000000_add_project_update_id_to_project_files.php` (dijalankan di DB dev), `Admin/ProjectController@uploadFile` (gambar via `ImageOptimizer` 1600px, selalu create `ProjectUpdate` "Progres v{n} diunggah" + link file), `ProjectFile.projectUpdate()` (nama `update()` fatal — bentrok `Model::update()`), `TrackOrderController@index` payload `updates[].files[]` (signed `track.files.preview` inline + `track.files.download`), route `track.files.preview` throttle `60,1`, UI timeline `TrackOrder.tsx` (thumbnail klik preview + chip unduh); test `ProjectTimelineTest.php` 3 passed — full suite 63 passed, 1 skipped (230 assertions) |
 | **Invoice DP/Final generate** + resend WA | `VERIFIED` | `Admin/OrderController.php:160-316` |
 | **Midtrans Webhook** strict SHA512 + gross_amount check + idempoten + fallback parse | `VERIFIED` aman | `MidtransWebhookController.php:27,49,55`, `MidtransService.php:100-110`, `tests/Feature/MidtransWebhookTest.php` 4 tests passed |
 | **File Deliverable** upload admin + download client + zip | `VERIFIED` | `Client/ProjectController.php:30-65` cek `project.user_id === auth && file.project_id === project.id` |
@@ -63,7 +66,10 @@
 | **Contact** `POST /contact` throttle 3/1 + honeypot `website` | `VERIFIED` | `ContactController.php:16-19` honeypot `if filled website → success palsu`, `Contact.tsx:22` `website:''` + hidden field `absolute -left-[9999px]`, `ContactHoneypotTest.php:1` 3 passed, `Contact-BHy8Ikru.js` build |
 | **Messaging Client↔Admin** | `VERIFIED` | `Client/MessageController`, `Admin/MessageController` |
 | **Admin UX Phase 1 Selesai (Breadcrumb, Toast, ConfirmModal, HelpTooltip, Asterisk, Bulk)** | `VERIFIED` | `PRD_Admin_Improvements.md` Quick Wins 100%: `AdminBreadcrumb` di header, `ToastProvider` auto-catch flash, `ConfirmProvider` + `useConfirm` global (0 browser confirm), `HelpTooltip` + required asterisk `*` di form, bulk action role & delete di `Users.tsx` + route `admin.users.bulk`. `npm run build` pass, 35 tests pass (termasuk 5 tests baru di `AdminBulkUserTest.php`). |
-| **Git & Workspace** | `IN PROGRESS` | 1 commit `6d5b1e7`, ~70 file Modified + ~20 Untracked belum commit — lihat §6 |
+| **Blog cover upload admin** (file JPG/PNG/WebP/GIF/BMP/AVIF, validasi ketat + resize/WebP) | `VERIFIED` (2026-10-16) | `app/Services/ImageOptimizer.php` (getimagesize whitelist, non-gambar/korup/SVG ditolak, tanpa fallback simpan mentah), `BlogController.php` (`cover_file`+`remove_cover`, hapus cover lama), `Blog.tsx` (picker+preview+cancel), `BlogCoverUploadTest.php` 9 passed; fix PUT-multipart PHP saat edit+file via `POST` + `_method=put` (`Blog.tsx`) — bukti empiris di WORKLOG 2026-10-16 |
+| **Fix `/admin/portfolios` blank putih** (props paginator diperlakukan array) | `VERIFIED` (2026-10-16) | Bug pre-existing sejak commit awal: `Portfolios.tsx` kini pakai `portfolios.data.map` / `portfolios.total` sesuai serialisasi paginator Inertia; `AdminPortfoliosPageTest.php` 3 passed (`has('portfolios.data', 1)` + `where('portfolios.data.0.title')`), full suite 47 passed (118 assertions), build OK |
+| **Hover fill card layanan `/services`** (biru bottom→top, light+dark, focus-visible, reduced-motion) | `VERIFIED` (build 2026-10-16; visual browser pending) | `app.css` blok `.service-card-hover`/`.service-card-hover-light` ditulis ulang: `scaleY(0)→scaleY(1)` + `origin bottom` 500ms, fill `brand-600` di kedua mode, chip kaca, text transition 450ms, `:has(:focus-visible)`; `Services/Index.tsx` card Paket dark-aware (token `bg-card`/`text-ink`/`border-line`); dipakai juga oleh `Services/Reguler.tsx` |
+| **Git & Workspace** | `VERIFIED` (2026-10-16) | Working tree bersih sesi ini: seluruh pekerjaan di-commit ke branch `feature/admin-improvements-phase-2` (batch 2026-10-16: auth admin-only, blog cover, portfolios fix, hover, pantau P0/P1/timeline, fix upload admin) + push ke `origin` — lihat §6 |
 
 ---
 
@@ -96,6 +102,12 @@ Audit ini adalah kelanjutan dari `docs/PRD.md` (11 Sep 2026) + verifikasi ulang 
 | P1-3 | **PWA minimal** `manifest.webmanifest` + `vite-plugin-pwa` + offline cache | `NOT STARTED` | `public/manifest.json` tidak ada, `package.json:1` tanpa `vite-plugin-pwa` — VERIFIED 0% |
 | P1-4 | **Image pipeline** — `sharp 0.35.3` installed tapi 0 usage, `.gitignore` `public/images/*.webp` bahaya deploy 404 | `NOT STARTED` | `package.json:17` VERIFIED `sharp` ada tapi tidak dipakai; `.gitignore:33` `public/images/*.webp` VERIFIED — fresh clone akan 404 |
 | P1-5 | **.env harden** `SENTRY_DSN`, `SESSION_SECURE_COOKIE=true` (prod), `Asia/Jakarta` timezone, hapus `env()` fallback terkecuali `config()` | `IN PROGRESS` | `.env.example:85` `APP_SSR` sudah ada, tapi belum ada SENTRY/GA/SESSION_SECURE; `WhatsappService.php:98,113` masih `env()` fallback (partial fixed di `MidtransService.php:19` sudah `config()`) |
+
+**Sisa audit Pantau Pesanan (2026-10-16 — Follow-up 4: P0; Follow-up 5: unduh file + notifikasi WA; Follow-up 6: histori foto/notes/tanggal; Follow-up 7: ringkasan pembayaran, stepper, refresh/"sudah bayar", countdown token, tombol salin):**
+- **P1 selesai semua** (5 item Follow-up 7: ringkasan total–dibayar–sisa, stepper status, tombol refresh, countdown token Snap mm:ss + auto-reload, tombol salin kode/link) — full suite 64 passed, 1 skipped (250 assertions).
+- **P2 tersisa:** route `track.lookup` POST tidak dipakai FE (FE pakai `router.get` 30/1); dua link PDF redundan per invoice; prop legacy `invoice`/`paymentUrl` top-level; log lookup gagal + limit per-code 3/menit (rancangan §7).
+- **Catatan Follow-up 6:** file lama (sebelum migrasi `project_update_id`) tetap tampil di section "File Hasil" tapi tidak di timeline — sengaja tanpa backfill; verifikasi browser upload foto → timeline belum dijalankan manual.
+- **Fix Follow-up 8 (2026-10-16):** upload foto admin sempat tidak pernah tersimpan karena form upload ter-nested di dalam form "Save changes" di `Admin/Projects.tsx` (nested form → submit saling bentrok, visit upload dibatalkan) — kini form upload jadi `<div>` + tombol `type="button"`; `app.blade.php` ditambah `<meta name="csrf-token">` karena 2 form bayar native di `TrackOrder.tsx` bergantung padanya (sebelumnya akan 419). Dibuktikan dengan emulasi upload HTTP nyata (file WebP tersimpan + timeline entry + progress bump), data uji dibersihkan. Full suite 64 passed, 1 skipped (251 assertions).
 
 ### P2 — Bulan 1 (Polish, Scale)
 
@@ -161,16 +173,18 @@ Rincian yang diverifikasi (`Read` file test + `bash`):
 
 ---
 
-## 6. Kondisi Git & Workspace (Verified 2026-10-10)
+## 6. Kondisi Git & Workspace (Verified 2026-10-16)
 
-- **Branch:** `main`
-- **Log:** `6d5b1e7 Initial commit: Raycode Studio Laravel 12 + Inertia + React 19` (hanya 1 commit)
-- **Status `git status --porcelain` (ringkasan):**
-  - `M` ~70 file (termasuk `routes/web.php`, `README.md`, `app/Services/MidtransService.php`, semua `resources/js/Pages/*`, `vite.config.ts`, `public/*`)
-  - `D` 3 file: `gambar/ray.png`, `resources/js/Pages/Public/CampusAdventure.tsx`, `CampusSmash.tsx`
-  - `??` ~20 file untracked: `app/Http/Controllers/Api/`, `SitemapController.php`, `TrackOrderController.php`, `app/Jobs/`, `app/Mail/`, `app/Models/EstimatorLead.php`, `app/Models/ProjectFile.php`, `app/Services/`, `config/midtrans.php`, 7 migrasi `2026_09_1x_*`, `docs/`, `SeoHead.tsx`, `TrackOrder.tsx`, `video.ts`, `invoice/pdf`, `sitemap.blade.php`, `routes/api.php`, 3 test Feature baru
-- **Artinya:** Banyak perbaikan Sprint1-2 sudah dikerjakan di working directory tapi **belum di-commit**. Sebelum lanjut, agent berikutnya harus `git status` + `git diff` untuk pahami perubahan yang belum ter-commit, bukan mengandalkan PRD lama saja.
-- **`.gitignore`:** sudah `lh-*.json`, `gambar/`, `public/images/*.webp` — VERIFIED `public/ray.png` masih ada (tidak ignore), `gambar/ray.png` sudah D (hapus) — konsisten.
+- **Branch deploy:** `feature/admin-improvements-phase-2` (origin/main masih `6d5b1e7` initial; commit deploy sebelumnya — `bc8fca2` fix production assets, `6d84c0a` hapus gambar unused — juga di branch ini).
+- **Log terbaru (batch 2026-10-16):**
+  - `3cd76a0` chore: ignore manual build deploy archives (build.zip/rar)
+  - `ae472f2` feat: restrict login to admin only, disable registration, hide login CTA
+  - `6b4ae8f` feat: blog cover upload with strict image optimization (WebP, whitelist)
+  - `9abf82e` fix: admin portfolios paginator + PUT multipart, services hover fill light/dark
+  - `a26a02b` feat(pantau): per-invoice payment, file download/preview/zip, WA notifications, progress timeline, admin upload fixes
+- **Artefak build:** `public/build` di-gitignore. Deploy frontend = upload `public/build.zip` manual (layout `build/...`, ekstrak di `public/`); `.zip` di-regenerate dari build terbaru 2026-10-16, `.rar` lama jangan dipakai.
+- **Langkah produksi (dilakukan user di hosting):** `git pull` branch → `php artisan migrate --force` (migrasi `2026_10_16_000000` WAJIB — kolom `project_files.project_update_id`) → ekstrak `public/build.zip` → `php artisan optimize:clear` (+ `storage:link` bila belum, php-zip untuk fitur ZIP).
+- **Artinya:** Sebelum perubahan ini, banyak perbaikan Sprint1-2 hanya hidup di working directory; kini semua sudah ter-commit dan ter-push di branch deploy.
 
 ---
 

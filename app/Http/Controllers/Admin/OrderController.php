@@ -139,6 +139,7 @@ class OrderController extends Controller
             'status' => ['required', 'in:pending,in_review,in_progress,review,completed,cancelled'],
         ]);
 
+        $previousStatus = $order->status;
         $data = ['status' => $validated['status']];
 
         if ($validated['status'] === 'in_progress' && ! $order->started_at) {
@@ -151,6 +152,15 @@ class OrderController extends Controller
         }
 
         $order->update($data);
+
+        // Notifikasi WA otomatis ke klien saat status berubah (try/catch — tidak boleh menggagalkan aksi admin)
+        if ($previousStatus !== $validated['status']) {
+            try {
+                app(WhatsappService::class)->notifyProjectUpdate($order->fresh('user'));
+            } catch (\Throwable $e) {
+                Log::warning('WA status notif gagal', ['order' => $order->id, 'msg' => $e->getMessage()]);
+            }
+        }
 
         return back()->with('success', "Order #{$order->id} updated to {$validated['status']}.");
     }

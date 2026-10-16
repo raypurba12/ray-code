@@ -18,9 +18,9 @@ class AuthTest extends TestCase
         $response->assertStatus(200);
     }
 
-    public function test_user_can_login_with_valid_credentials(): void
+    public function test_client_cannot_login(): void
     {
-        $user = User::factory()->create([
+        User::factory()->create([
             'email' => 'client@raycode.dev',
             'password' => Hash::make('password123'),
             'role' => 'client',
@@ -31,8 +31,8 @@ class AuthTest extends TestCase
             'password' => 'password123',
         ]);
 
-        $this->assertAuthenticatedAs($user);
-        $response->assertRedirect('/dashboard');
+        $this->assertGuest();
+        $response->assertSessionHasErrors('email');
     }
 
     public function test_admin_user_redirects_to_admin_panel_after_login(): void
@@ -68,7 +68,7 @@ class AuthTest extends TestCase
         $response->assertSessionHasErrors('email');
     }
 
-    public function test_new_user_can_register(): void
+    public function test_register_is_disabled_and_creates_no_user(): void
     {
         $payload = [
             'name' => 'Budi Santoso',
@@ -80,13 +80,13 @@ class AuthTest extends TestCase
 
         $response = $this->post(route('register.store'), $payload);
 
-        $this->assertDatabaseHas('users', [
-            'name' => 'Budi Santoso',
-            'email' => 'budi.new@example.com',
-            'role' => 'client',
-        ]);
+        $response->assertRedirect(route('login'));
+        $this->assertDatabaseMissing('users', ['email' => 'budi.new@example.com']);
+    }
 
-        $response->assertRedirect('/dashboard');
+    public function test_register_page_redirects_to_login(): void
+    {
+        $this->get(route('register'))->assertRedirect(route('login'));
     }
 
     public function test_user_can_logout(): void

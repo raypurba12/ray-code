@@ -46,6 +46,9 @@ Route::post('/pantau-pesanan/lookup', function (Request $r) {
 Route::post('/track/{code}/pay', [TrackOrderController::class, 'pay'])->middleware('throttle:10,1')->name('track.pay');
 Route::get('/pay/{code}', [TrackOrderController::class, 'payShort'])->middleware('throttle:10,1')->name('pay.short');
 Route::get('/invoice/{code}/pdf', [TrackOrderController::class, 'invoicePdf'])->middleware('throttle:30,1')->name('invoice.pdf');
+Route::get('/pantau-pesanan/{code}/files/{file}/download', [TrackOrderController::class, 'downloadFile'])->middleware('throttle:30,1')->name('track.files.download');
+Route::get('/pantau-pesanan/{code}/files/{file}/preview', [TrackOrderController::class, 'previewFile'])->middleware('throttle:60,1')->name('track.files.preview');
+Route::get('/pantau-pesanan/{code}/files/download-zip', [TrackOrderController::class, 'downloadFilesZip'])->middleware('throttle:30,1')->name('track.files.zip');
 Route::get('/faq', [FaqController::class, 'index'])->name('faq');
 Route::get('/contact', [ContactController::class, 'index'])->name('contact');
 Route::post('/contact', [ContactController::class, 'store'])->middleware('throttle:3,1')->name('contact.store');

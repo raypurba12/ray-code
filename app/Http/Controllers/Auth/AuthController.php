@@ -27,43 +27,34 @@ class AuthController extends Controller
             'password' => ['required'],
         ]);
 
-        if (! Auth::attempt($credentials, $request->boolean('remember'))) {
+        if (! Auth::validate($credentials)) {
             throw ValidationException::withMessages([
                 'email' => 'These credentials do not match our records.',
             ]);
         }
 
+        $user = Auth::getLastAttempted();
+
+        if (! $user->isAdmin()) {
+            throw ValidationException::withMessages([
+                'email' => 'Only admin accounts can sign in.',
+            ]);
+        }
+
+        Auth::login($user, $request->boolean('remember'));
         $request->session()->regenerate();
 
-        $user = Auth::user();
-
-        return redirect()->intended($user->isAdmin() ? '/admin' : '/dashboard');
+        return redirect()->intended('/admin');
     }
 
     public function showRegister()
     {
-        return Inertia::render('Auth/Register');
+        return redirect()->route('login');
     }
 
-    public function register(Request $request)
+    public function register()
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'confirmed', 'min:8'],
-            'company' => ['nullable', 'string', 'max:255'],
-        ]);
-
-        $user = User::create([
-            ...$validated,
-            'role' => 'client',
-            'password' => Hash::make($validated['password']),
-        ]);
-
-        Auth::login($user);
-        $request->session()->regenerate();
-
-        return redirect('/dashboard')->with('success', 'Welcome to Raycode! Your account is ready.');
+        return redirect()->route('login');
     }
 
     public function logout(Request $request)
