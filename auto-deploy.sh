@@ -12,8 +12,8 @@ for d in /usr/local/bin "$HOME"/nodevenv/*/*/bin "$HOME"/nodevenv/*/bin /opt/cpa
 done
 export PATH
 
-if ! command -v git >/dev/null 2>&1 || ! command -v php >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
-  echo "$(date '+%F %T') ERROR: git/php/npm tidak ketemu di PATH cron (git: $(command -v git || echo -), php: $(command -v php || echo -), npm: $(command -v npm || echo -))" >> "$LOG"
+if ! command -v git >/dev/null 2>&1 || ! command -v php >/dev/null 2>&1; then
+  echo "$(date '+%F %T') ERROR: git/php tidak ketemu di PATH cron (git: $(command -v git || echo -), php: $(command -v php || echo -))" >> "$LOG"
   exit 1
 fi
 

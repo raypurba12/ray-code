@@ -182,8 +182,9 @@ Rincian yang diverifikasi (`Read` file test + `bash`):
   - `6b4ae8f` feat: blog cover upload with strict image optimization (WebP, whitelist)
   - `9abf82e` fix: admin portfolios paginator + PUT multipart, services hover fill light/dark
   - `a26a02b` feat(pantau): per-invoice payment, file download/preview/zip, WA notifications, progress timeline, admin upload fixes
-- **Artefak build:** `public/build` di-gitignore. Deploy frontend = upload `public/build.zip` manual (layout `build/...`, ekstrak di `public/`); `.zip` di-regenerate dari build terbaru 2026-10-16, `.rar` lama jangan dipakai.
-- **Langkah produksi (dilakukan user di hosting):** `git pull` branch → `php artisan migrate --force` (migrasi `2026_10_16_000000` WAJIB — kolom `project_files.project_update_id`) → ekstrak `public/build.zip` → `php artisan optimize:clear` (+ `storage:link` bila belum, php-zip untuk fitur ZIP).
+- **Artefak build (strategi berubah 2026-10-16):** `public/build` sekarang **di-track di git** — hosting (rapidplex) tidak punya node/npm (verified `which npm` kosong). Setiap perubahan frontend wajib `npm run build` lokal lalu commit `public/build` sebelum push. Upload manual `build.zip` tidak dipakai lagi (arsip lama tetap di-gitignore).
+- **Auto-deploy:** cron hosting menjalankan `auto-deploy.sh` tiap 5 menit (fetch → bandingkan HEAD vs `origin/<branch>` → `deploy.sh` = pull + `migrate --force` + `optimize:clear`; log `~/raycode-deploy.log`). SSH dari luar diblokir hosting (port 22/2222/65002 tertutup — verified 2026-10-16) → workflow GitHub Actions SSH dihapus.
+- **Langkah produksi (dilakukan user di hosting, sekali saat migrasi ke build tracked):** `cd ~/ray-code && rm -rf public/build && git pull && bash deploy.sh` (migrasi `2026_10_16_000000` WAJIB — kolom `project_files.project_update_id`; `storage:link` bila belum; php-zip untuk fitur ZIP).
 - **Artinya:** Sebelum perubahan ini, banyak perbaikan Sprint1-2 hanya hidup di working directory; kini semua sudah ter-commit dan ter-push di branch deploy.
 
 ---

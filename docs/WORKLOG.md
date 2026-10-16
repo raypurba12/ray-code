@@ -294,6 +294,17 @@ Template entri:
 
 ---
 
+### Follow-up 12 (sesi yang sama) — Server tanpa node: build di-track di git + cron auto-deploy final
+
+- **Verifikasi server (Terminal cPanel):** `which git php npm node` → git `/usr/local/cpanel/3rdparty/lib/path-bin/git` ✓, php `/usr/local/bin/php` (ea-php83) ✓, **npm/node TIDAK ADA**; tidak ada `/opt/cpanel/ea-nodejs*`; log `auto-deploy.sh` menangkap: `ERROR: git/php/npm tidak ketemu ... npm: -`. Artinya build frontend di server mustahil.
+- **Keputusan strategi (disepakati user):** `public/build` **di-track di git** — baris `/public/build` di `.gitignore` dinonaktifkan (dikomentari). Build dikerjakan di komputer lokal (`npm run build`) lalu ikut di-commit; server tanpa node cukup `git pull` (build sudah ikut). Menyimpang dari konvensi umum (artefak di repo) — konsekuensi: **setiap perubahan FE wajib `npm run build` + commit `public/build` sebelum push**; repo bertambah ±1 MB per build.
+- **`deploy.sh` disederhanakan (tanpa npm):** `git pull --ff-only` → `rm -f public/hot` → `php artisan migrate --force` → `php artisan optimize:clear`.
+- **`auto-deploy.sh` disesuaikan:** cek PATH hanya `git` + `php` (tanpa npm); PATH bootstrap tetap (`/usr/local/bin`, `ea-php*`, `nodevenv*`).
+- **Migrasi server sekali (dilakukan user):** `cd ~/ray-code && rm -rf public/build && git pull && bash deploy.sh` (hapus build lama manual dulu karena `public/build` sekarang tracked → pull akan menolak overwrite untracked).
+- **Unresolved:** cron job cPanel (tiap 5 menit, `bash /home/raycodem/ray-code/auto-deploy.sh`) belum dikonfirmasi user; test push → tunggu ≤5 menit → cek `~/raycode-deploy.log`.
+
+---
+
 ## 2026-10-13 — Admin Improvements Phase 1 Selesai: ConfirmModal, Toast, Breadcrumbs, HelpTooltip, Required Asterisk & Bulk Actions
 
 - **Fokus:** Menyelesaikan 100% item Phase 1 (Quick Wins) dari `docs/PRD_Admin_Improvements.md`.
