@@ -14,6 +14,259 @@ Template entri:
 
 ---
 
+## 2026-10-16 — Blog Cover Upload (validasi ketat + auto-compress) & Fix "category required" saat Edit dengan File
+
+- **Fokus:** (1) `Admin/Blog.tsx` field "URL Cover (opsional)" ditambah upload file langsung — terima semua jenis foto, tolak file non-gambar/script, auto-resize + kompres. (2) Fix bug user: saat edit artikel dan memasukkan gambar, muncul "The category field is required".
+- **Root cause bug "category required" (dibuktikan empiris):** Inertia 3.7 mengirim `PUT` asli + FormData saat ada file (grep `_method` di `@inertiajs/core` + `@inertiajs/react` = 0 spoof). PHP **tidak** mem-parsing body multipart untuk method PUT — test `php -S` + curl: `PUT -F` → `$_POST=[]`, `$_FILES=[]`, raw body 352 byte terbuang; `POST -F "_method=PUT"` → `$_POST` + `$_FILES` utuh. Jadi semua field teks hilang di validasi (title/excerpt/content/category), hanya terjadi di edit+file (create POST aman). PHPUnit tidak menangkap ini karena test client melewati PHP globals.
+- **File dibuat / diubah:**
+  - `app/Services/ImageOptimizer.php` — **BARU**: validasi ulang via `getimagesize` (whitelist IMAGETYPE jpeg/png/webp/gif/bmp/avif), guard 24MP, resize sisi terpanjang max 1600, simpan WebP q75 (fallback JPEG); **tidak pernah** fallback menyimpan file mentah — non-gambar/korup/format tak didukung → `ValidationException`.
+  - `app/Http/Controllers/Admin/BlogController.php` — `cover_url` rule jadi `nullable|string|max:2048` (support path `/storage/...`), tambah `cover_file` (`file|mimes:jpeg,jpg,png,webp,gif,bmp,avif|max:10240`) + `remove_cover`; upload prioritas > URL; hapus file lama saat ganti/hapus/destroy (`deleteLocalCover`).
+  - `resources/js/Pages/Admin/Blog.tsx` — file picker (JPG/PNG/WebP/GIF/BMP/AVIF, maks 10 MB), preview via `URL.createObjectURL`, checkbox "Hapus cover saat ini", label URL jadi "URL Cover eksternal (opsional)". **Fix PUT multipart:** saat edit + ada file → `post(updateUrl)` + `_method: 'put'` di transform; tanpa file tetap `put()`.
+  - `resources/js/Pages/Admin/Portfolios.tsx` — fix bug PUT multipart yang sama (follow-up atas permintaan user): saat edit + ada file (`thumbnail_file`/`video_file`/`gallery_files`) → `post(updateUrl)` + `_method: 'put'`; tanpa file tetap `put()`. Cek halaman admin lain: `Projects.tsx` upload via POST sudah aman, `JokiServices.tsx` header PUT tanpa file aman.
+  - `tests/Feature/BlogCoverUploadTest.php` — **BARU** 9 tests (guest 302, client 403, upload jpg 2400x1600 → webp di `/storage/blog_covers/`, teks menyamar .jpg ditolak, PNG korup ditolak, SVG ditolak, URL eksternal tetap diterima, update ganti+hapus file lama, remove_cover hapus file).
+- **Keputusan:**
+  - Hybrid (file + URL): post lama dengan URL eksternal tetap valid, tidak perlu migrasi (`cover_url` string tetap).
+  - Validasi ganda: `mimes` (content-based di production) + `getimagesize` di service — layer kedua menangkap file yang mimes-nya lolos. SVG sengaja TIDAK diterima (bisa berisi script). HEIC belum didukung GD → error jelas "harus berupa gambar".
+  - `ImageOptimizer` service terpisah (bukan ubah `PortfolioController` yang punya `storeOptimizedImage` dengan fallback simpan mentah) — sesuai aturan scope satu concern per perubahan.
+- **Perintah test yang dijalankan:**
+  ```powershell
+  composer install   # dev deps (phpunit/pint/collision/faker) hilang dari vendor — pulih dari composer.lock
+  php artisan test --filter BlogCoverUploadTest --compact   # 9 passed (25 assertions)
+  php artisan test --compact                                # 44 passed (103 assertions)
+  npm run build                                             # ✓ 2889 modules, Blog-qoOPny32.js 8.57k, no TS error
+  # setelah follow-up fix Portfolios.tsx:
+  npm run build                                             # exit 0, Portfolios-x6IJkfLB.js 20.69k
+  php artisan test --compact                                # 44 passed (103 assertions) — tetap
+  .\vendor\bin\pint --test app\Services\ImageOptimizer.php app\Http\Controllers\Admin\BlogController.php tests\Feature\BlogCoverUploadTest.php  # passed
+  ```
+- **Catatan:** Antivirus (Defender) sempat mem-quarantine file test karena isi literal payload; test diganti teks netral. Jangan tulis string payload eksekusi literal di source.
+- **Unresolved:**
+  - Verifikasi browser end-to-end (klik upload di edit modal blog + portfolio) belum dijalankan via otomasi — menunggu konfirmasi user.
+  - `vendor/` sebelumnya tanpa dev deps — dicatat agar sesi berikutnya tahu `composer install` mungkin perlu diulang.
+  - `PortfolioController@storeOptimizedImage` masih punya fallback `$file->store()` mentah (tidak strict seperti `ImageOptimizer`) — kandidat refactor ke service yang sama di sesi terpisah.
+
+### Follow-up (sesi yang sama) — Fix `/admin/portfolios` putih kosong
+
+- **Laporan user:** halaman `http://127.0.0.1:8000/admin/portfolios` blank putih di dev lokal.
+- **Investigasi (semua dibuktikan):** tidak ada error server (`storage/logs/laravel.log` tanpa `local.ERROR` terkini); Vite dev server aktif (`public/hot` ada) dan mentransform semua modul OK; `git diff` `Portfolios.tsx` hanya di submit handler (mustahil crash render). Akar masalah: **mismatch kontrak props yang pre-existing sejak commit awal** — `PortfolioController@index` mengirim `paginate(20)`, Inertia menserialisasi paginator (Arrayable → `toArray()`) sebagai object `{data, current_page, last_page, total, ...}`, tapi `Portfolios.tsx` memperlakukannya sebagai array (`portfolios.length`, `portfolios.map`) → runtime `portfolios.map is not a function` → React unmount → blank putih. PHPUnit/build tidak menangkap ini karena interface TS salah mendeklarasikan tipe.
+- **Bukti empiris:** `tests/Feature/AdminPortfoliosPageTest.php` (BARU, 3 tests) — `assertInertia(... ->has('portfolios.data', 1)->where('portfolios.data.0.title', 'Studi Uji'))` **lulus saat dijalankan sebelum fix FE** → membuktikan props berbentuk paginator object. Bandingkan 5 halaman admin lain (`Users/Orders/Projects/Services/EstimatorLeads`) yang sudah benar memakai `.data.map`.
+- **File diubah:** `resources/js/Pages/Admin/Portfolios.tsx` — interface `portfolios` jadi `{ data: PortfolioRow[]; current_page; last_page; total }`; render pakai `portfolios.data.map`, header pakai `portfolios.total`, empty-state pakai `portfolios.data.length === 0`.
+- **Perintah test + hasil aktual:**
+  ```powershell
+  php artisan test --filter=AdminPortfoliosPageTest --compact   # 3 passed (15 assertions) — dijalankan sebelum fix FE sebagai bukti
+  npm run build                                                  # exit 0, Portfolios-CHsQTTdO.js 20.70 kB
+  php artisan test --compact                                     # 47 passed (118 assertions)
+  .\vendor\bin\pint --test tests\Feature\AdminPortfoliosPageTest.php  # passed
+  ```
+- **Unresolved:** verifikasi visual browser (halaman render dengan 9 portfolio lokal) — user diminta hard-refresh; jika masih blank, cek console browser.
+
+### Follow-up 2 (sesi yang sama) — Login khusus admin + tombol login disembunyikan (keputusan user via pertanyaan klarifikasi)
+
+- **Permintaan user:** hanya admin yang bisa login; tombol login disembunyikan. **Keputusan user:** (1) blokir total akun client + matikan register; (2) CTA pemesanan di halaman publik (Estimator) diarahkan ke `/cara-pesan`.
+- **File diubah:**
+  - `app/Http/Controllers/Auth/AuthController.php` — `login()`: `Auth::validate($credentials)` (verifikasi kredensial tanpa login) → ambil `Auth::getLastAttempted()` → jika bukan admin (`isAdmin()`), tolak dengan error `email` tanpa pernah login; admin → `Auth::login($user, remember)` + `session()->regenerate()` + redirect intended `/admin`. **Register dinonaktifkan:** `showRegister()` & `register()` redirect ke `/login` (tidak ada user dibuat). Pendekatan validate-then-login dipilih agar user client tidak pernah ter-autentikasi (menghindari side effect cookie remember/session).
+  - `resources/js/Components/layout/PublicLayout.tsx` — tombol "Masuk" dihapus dari header desktop & menu mobile (guest hanya melihat tombol Kontak di menu mobile).
+  - `resources/js/Pages/Auth/Login.tsx` — link "Buat akun gratis" dihapus. `ForgotPassword.tsx` — link "Belum punya akun? Daftar" dihapus.
+  - `resources/js/Pages/Public/Estimator.tsx` — `orderHref`: pengunjung belum login diarahkan ke `R.caraPesan` (sebelumnya `R.login`).
+  - `tests/Feature/AuthTest.php` — `test_user_can_login_with_valid_credentials` (client) diganti `test_client_cannot_login` (assertGuest + error email); `test_new_user_can_register` diganti `test_register_is_disabled_and_creates_no_user` (redirect + tidak ada user baru); ditambah `test_register_page_redirects_to_login`.
+- **Perintah test + hasil aktual:**
+  ```powershell
+  php artisan test --compact                                            # 48 passed (118 assertions)
+  npm run build                                                         # exit 0
+  .\vendor\bin\pint --test app\Http\Controllers\Auth\AuthController.php tests\Feature\AuthTest.php  # passed
+  ```
+- **Catatan / unresolved:**
+  - Client yang **sudah login** (sesi aktif) masih bisa memakai `/dashboard` sampai logout/expire — belum ada pemaksaan invalidasi sesi; perlu keputusan lanjutan jika harus langsung dikick.
+  - File `resources/js/Pages/Auth/Register.tsx` masih ada (tidak dihapus) tapi tidak reachable karena route redirect — sengaja dibiarkan agar mudah diaktifkan kembali.
+  - `/forgot-password` masih berfungsi untuk semua email (client bisa reset password tapi tetap tidak bisa login) — belum ada pembatasan; dampak rendah.
+  - Verifikasi manual browser (login admin sukses, login client ditolak, tombol hilang) belum dijalankan.
+
+### Follow-up 3 (sesi yang sama) — Fix hover fill card layanan `/services` (light + dark)
+
+- **Fokus:** Efek fill biru dari bawah ke atas pada card layanan (`Pages/Public/Services/Index.tsx` — tab Paket & Joki; class `.service-card-hover` / `.service-card-hover-light`; juga dipakai `Services/Reguler.tsx`): teknik optimal, konsisten light & dark, focus keyboard, reduced-motion, tanpa redesign.
+- **Akar masalah (dibaca dari kode aktual):** (1) fill pakai `clip-path` — bukan compositor-friendly (repaint tiap frame); (2) `.service-card-hover-light` memakai fill `brand-300` (biru muda) + teks `var(--color-ink)` → di dark mode `--color-ink` hampir putih → kontras rusak (teks putih di atas biru muda); (3) card Paket hardcode `bg-white`/`text-slate-900` → di dark mode tetap putih, bukan base gelap.
+- **File diubah:**
+  - `resources/css/app.css` — blok hover kedua class ditulis ulang: fill `::before` `transform: scaleY(0)` → `scaleY(1)` + `transform-origin: bottom` + `transition: transform 500ms cubic-bezier(0.22,1,0.36,1)` (naik & turun mulus, compositor-friendly); fill `var(--color-brand-600)` sama di kedua mode; teks/ikon putih saat fill aktif (sekunder `rgba(255,255,255,.85)`, emerald `#6ee7b7`); chip ikon/tombol jadi kaca `rgba(255,255,255,.14)` + ring dinonaktifkan; transisi warna descendant 450ms mengikuti naiknya fill (elemen dengan utility `transition-*` sendiri tidak diutak-atik); state mencakup `:hover`, `:focus-visible`, dan `:has(:focus-visible)` (card Paket CTA-nya di elemen dalam) + outline focus putih saat fill aktif; `prefers-reduced-motion` mematikan semua transisi card.
+  - `resources/js/Pages/Public/Services/Index.tsx` — card Paket jadi token tema: `bg-white→bg-card`, `border-slate-200→border-line`, `text-slate-900→text-ink`, `text-slate-500→text-ink-3`, `text-slate-400→text-ink-4`; state highlighted dapat varian dark (`dark:border-brand-500/50 dark:ring-brand-500/20` + glow lebih terang); icon chip (`dark:bg-blue-500/10 dark:text-blue-400`) dan CTA WhatsApp (`dark:border-blue-500 dark:bg-transparent dark:text-blue-300`) dapat varian dark. Card Joki & `Reguler.tsx` sudah token-based — tidak diubah.
+- **Verifikasi:**
+  ```powershell
+  npm run build   # ✓ built in 18.81s (exit 0)
+  # cek CSS hasil build (public/build/assets/app-DmBNhqqU.css):
+  # scaleY(0)→scaleY(1) + transform-origin:bottom + cubic-bezier(.22,1,.36,1) ✓
+  # :has(:focus-visible) lolos minifikasi ✓; chip rgba(255,255,255,.14) ✓; reduced-motion ✓
+  ```
+- **Unresolved:** verifikasi visual hover di browser (light & dark, tab Paket & Joki) belum diotomasi — perlu dicek user di dev server (HMR sudah membawa perubahan). Tidak ada perubahan backend — test PHP tidak relevan untuk perubahan ini.
+
+### Audit (read-only, sesi yang sama) — `GET /pantau-pesanan`
+
+- **Fokus:** Audit halaman pantau pesanan untuk mengidentifikasi apa yang perlu ditambah/diperbaiki. **Tidak ada kode diubah.**
+- **Temuan bug (verified via `TrackOrderController.php`):** (1) `pay()` memilih invoice `sortByDesc('created_at')` = unpaid terbaru, padahal tiap kartu invoice punya tombol bayar dan `index()` memprioritaskan DP (`sortBy` asc) — jika DP & final dua-duanya unpaid, tombol "Bayar DP" membuat token untuk invoice FINAL (endpoint tidak menerima param invoice); (2) `paymentUrl` dirender dari `snap_token` tanpa cek `snap_token_expires_at` → tombol "Buka link langsung (vtweb)" bisa kadaluarsa (POST /pay memang regenerate); (3) `TrackOrder.tsx` tidak memakai `noIndex` (SeoHead mendukung) & robots.txt tidak disallow `/pantau-pesanan` → halaman privat bisa terindeks; (4) pesan 403 PDF menyebut "Buka via dashboard" padahal login client sudah diblokir; (5) route `track.lookup` (POST 10/1) tidak dipakai FE (FE pakai `router.get` GET 30/1); (6) dua link PDF redundan per invoice; (7) prop legacy `invoice`/`paymentUrl` top-level nyaris tidak dipakai; (8) tidak ada log lookup gagal (rancangan §7 belum diimplementasi).
+- **Gap fitur (konteks: login client diblokir → pantau = satu-satunya portal klien):** (a) **tidak ada jalur unduh file hasil** — route download hanya di `/dashboard` (auth); (b) testimoni butuh auth juga; (c) tidak ada notifikasi WA otomatis saat status/progress berubah (WhatsappService sudah ada, dipakai hanya untuk invoice/order); (d) tidak ada auto-refresh/refresh manual setelah bayar; (e) tidak ada ringkasan total/sudah dibayar/sisa; (f) tidak ada countdown token 14 menit; (g) tidak ada tombol salin kode/link; (h) status berupa badge (bukan stepper posisi).
+- **Catatan:** rekomendasi prioritas disampaikan ke user di sesi; belum ada item yang dieksekusi.
+
+### Follow-up 4 (sesi yang sama) — Eksekusi P0 audit pantau: bayar per-invoice, expiry link, noindex, copy 403
+
+- **Fokus:** Perbaikan 4 temuan P0 audit di atas (tanpa fitur baru; P1 unduh file hasil & notifikasi WA ditahan menunggu keputusan user).
+- **File diubah:**
+  - `app/Http/Controllers/TrackOrderController.php`:
+    - `pay()` — pilih invoice dari param `invoice` (form/query, dibaca `$request->input()` sehingga `GET /pay/{code}?invoice=` juga jalan); fallback **unpaid terlama (DP dulu)** konsisten dengan `index()`; error jelas `Tagihan X tidak ditemukan atau sudah dibayar.` jika param menunjuk invoice paid/asing. Sebelumnya selalu `sortByDesc('created_at')` = unpaid terbaru → tombol "Bayar DP" bisa membuat token invoice FINAL.
+    - `index()` — `paymentUrl` (top-level & per-invoice) hanya diisi jika `status=unpaid && snap_token && snap_token_expires_at?->isFuture()`; token kadaluarsa → FE otomatis menampilkan tombol Generate (regenerate lewat POST) alih-alih link vtweb mati.
+    - `index()` & `invoicePdf()` — header `X-Robots-Tag: noindex, nofollow` (index via `->toResponse($request)->header(...)`).
+    - `invoicePdf()` — copy 403 diganti: "Buka ulang halaman Pantau Pesanan untuk link baru, atau minta admin mengirim ulang." (dashboard client sudah nonaktif).
+  - `resources/js/Pages/Public/TrackOrder.tsx` — `SeoHead` dapat `noIndex`; kedua form bayar (initiate & generate) menambah `<input type="hidden" name="invoice" value={inv.number} />` agar backend tahu invoice mana yang diklik.
+  - `tests/Feature/TrackOrderTest.php` — **BARU** 6 tests: render + notFound; paymentUrl hanya untuk token unexpired (DP expired → null, FINAL fresh → URL, top-level fallback null); header noindex; `pay` memakai param invoice (regresi bug DP→FINAL via Mockery mock `MidtransService`); fallback unpaid terlama tanpa param; invoice paid ditolak (`assertSessionHasErrors` + `shouldNotReceive`).
+  - `tests/Feature/InvoicePdfSecurityTest.php` — tambah assert `X-Robots-Tag` di signed 200.
+- **Keputusan:**
+  - Param dipilih `invoice` = **nomor invoice** (INV-xxx) mengikuti pola yang sudah ada di `invoicePdf()` (`?invoice=`), bukan id.
+  - noindex via **header** (andal tanpa SSR) + meta `noIndex` SeoHead (dokumentasi intent); robots.txt `/pantau-pesanan` **tidak** di-disallow agar crawler tetap bisa melihat meta/header noindex (disallow + noindex = kontradiktif).
+- **Perintah test + hasil aktual:**
+  ```powershell
+  php artisan test --compact        # 54 passed (169 assertions) — naik dari 48 (6 test baru)
+  npm run build                     # ✓ built in 26.36s (exit 0)
+  npx tsc --noEmit                  # error pra-existing di file lain; TrackOrder.tsx bersih
+  .\vendor\bin\pint --test app\Http\Controllers\TrackOrderController.php tests\Feature\TrackOrderTest.php tests\Feature\InvoicePdfSecurityTest.php  # passed
+  ```
+- **Unresolved:**
+  - Masih terbuka dari audit: (5) route `track.lookup` POST tidak dipakai FE; (6) dua link PDF redundan; (7) prop legacy `invoice`/`paymentUrl`; (8) log lookup gagal.
+  - P1 menunggu keputusan user: unduh file hasil via signed link (gap terbesar — login client diblokir), notifikasi WA otomatis saat update status, refresh setelah bayar, ringkasan pembayaran, dll.
+  - Verifikasi manual browser pembayaran (DP vs final dua-duanya unpaid) belum dijalankan — logika tercakup test otomatis.
+
+### Follow-up 5 (sesi yang sama) — P1 terpilih: Unduh file hasil di pantau + notifikasi WA otomatis status/progress
+
+- **Fokus:** (1) Jalur unduh deliverable di `/pantau-pesanan` (gap terbesar karena login client diblokir); (2) notifikasi WA otomatis ke klien saat admin mengubah status/progress. **Keputusan user:** semua file yang diupload admin tampil di pantau.
+- **File diubah:**
+  - `routes/web.php` — 2 route baru signed, throttle `30,1`: `GET /pantau-pesanan/{code}/files/{file}/download` (`track.files.download`) & `GET /pantau-pesanan/{code}/files/download-zip` (`track.files.zip`).
+  - `app/Http/Controllers/TrackOrderController.php` — `index()` eager load `files` + payload `files[]` (id, nama, mime, size, versi, tanggal, `downloadUrl` signed 30 menit) + `filesZipUrl` (hanya jika >1 file); method `downloadFile()` & `downloadFilesZip()`: **signed URL ATAU owner/admin** (pola sama `invoicePdf`), cek `file.project_id === project.id` (404), file tak ada → 404; bila `php-zip` absen → redirect pantau + flash error (fallback unduh per file).
+  - `resources/js/Pages/Public/TrackOrder.tsx` — section "File Hasil (n)" setelah invoice: list file (nama, v, ukuran, tanggal) + tombol Unduh + tombol "Unduh semua (.zip)" bila `filesZipUrl`; analytics `file_download`/`files_zip_download`.
+  - `resources/js/lib/utils.ts` — `formatBytes()` baru (B/KB/MB/GB).
+  - `app/Services/WhatsappService.php` — `buildProjectUpdateMessage()` (sapaan, kode, judul, status label + progress, hint per status, catatan, link pantau) + `notifyProjectUpdate()` (skip + log bila tanpa phone; pakai `client_wa_cache` → fallback `user.phone`).
+  - `app/Http/Controllers/Admin/OrderController.php` — `updateStatus()`: bandingkan status lama; hanya kirim WA saat **berubah** (try/catch + Log, tidak boleh menggagalkan aksi admin).
+  - `app/Http/Controllers/Admin/ProjectController.php` — `update()`: kirim WA saat **progress berubah** (note `X% → Y%` + `update_notes` bila diisi).
+  - `tests/Feature/TrackOrderTest.php` — +3 tests: payload files + `downloadUrl` signed & `filesZipUrl` null (1 file); unduh 1 file tanpa signature 403 → dengan signature 200 `assertDownload`; zip tanpa signature 403 → dengan signature 200 + `filesZipUrl` berisi `download-zip` (2 file).
+  - `tests/Feature/AdminProjectNotificationTest.php` — **BARU** 4 tests: status berubah → `notifyProjectUpdate` dipanggil; status sama → tidak; progress berubah → dipanggil; progress sama → tidak (Mockery mock `WhatsappService`).
+- **Keputusan:**
+  - Kirim WA **sinkron** (try/catch) bukan queued job: `QUEUE_CONNECTION=database` tanpa worker → job `SendInvoiceNotification`-style tidak akan terkirim; `WhatsappService::send()` sudah aman no-op (log + waLink) bila gateway absen.
+  - Signed URL 30 menit konsisten dengan invoice PDF; fallback owner/admin tetap ada untuk admin cek file.
+  - File tampil untuk **semua** status (user pilih "semua file yang diupload admin").
+  - `uploadFile()` auto-bump progress **tidak** mengirim WA (hindari spam; sudah ada entry timeline) — bisa ditambah bila diminta.
+- **Perintah test + hasil aktual:**
+  ```powershell
+  php artisan test --compact   # 60 passed, 1 skipped (198 assertions) — zip test di-skip: class ZipArchive tidak ada di PHP CLI (php_zip.dll ada tapi belum di-enable di C:\xampp\php\php.ini)
+  npm run build                # ✓ built in 28.73s (exit 0), TrackOrder-B5BgXmXY.js 15.39 kB
+  npx tsc --noEmit             # TrackOrder.tsx & utils.ts bersih (error lain pre-existing)
+  .\vendor\bin\pint --test <7 file yang diubah>  # passed
+  ```
+- **Unresolved:**
+  - **Aktifkan `extension=zip` di `C:\xampp\php\php.ini` + restart** agar fitur ZIP jalan di lokal (tanpa itu muncul fallback pesan "Fitur ZIP belum tersedia — unduh satu per satu").
+  - Verifikasi manual browser: unduh file via signed link dari halaman pantau + WA notif end-to-end dengan gateway Fonnte asli belum dijalankan.
+  - Sisa audit P2 masih terbuka: route `track.lookup` tidak dipakai FE, dua link PDF redundan, prop legacy `invoice`/`paymentUrl`, log lookup gagal + limit per-code; P1 sisa: refresh setelah bayar, ringkasan pembayaran, countdown token, tombol salin kode/link, stepper status.
+
+### Follow-up 6 (sesi yang sama) — Histori progres di pantau: foto + notes + tanggal dari upload admin
+
+- **Fokus:** Permintaan user: foto + notes yang diinput admin di `/admin/projects` belum muncul di pantau pesanan; user mau ada histori lengkap (foto, notes, tanggal).
+- **File dibuat / diubah:**
+  - `database/migrations/2026_10_16_000000_add_project_update_id_to_project_files.php` — **BARU**: `project_files.project_update_id` nullable FK → `project_updates`, `nullOnDelete`. Sudah dijalankan di DB dev (`php artisan migrate --force` → DONE 504ms).
+  - `app/Models/ProjectFile.php` — fillable `project_update_id` + relasi `projectUpdate()`; **catatan: nama relasi `update()` fatal error** (`declaration must be compatible with Model::update()`) — jangan pakai nama itu.
+  - `app/Models/ProjectUpdate.php` — relasi `files()`.
+  - `app/Http/Controllers/Admin/ProjectController.php` — `uploadFile()`: gambar → `ImageOptimizer` (max 1600px, WebP); **selalu** create `ProjectUpdate` "Progres v{n} diunggah" (notes = input `version_notes`) + link file via `project_update_id`; mime/size dibaca dari `Storage::disk('public')`; auto-bump progress +10 tetap.
+  - `app/Http/Controllers/TrackOrderController.php` — `index()` eager load `updates.files`; payload `updates[].files[]` (`is_image`, `previewUrl` signed `track.files.preview`, `downloadUrl` signed; keduanya 30 menit); refactor `downloadFile` → `serveFile($request,$code,$file,bool $inline)` + `previewFile()` baru.
+  - `routes/web.php` — route baru `GET /pantau-pesanan/{code}/files/{file}/preview` (`track.files.preview`, throttle `60,1`).
+  - `resources/js/Pages/Public/TrackOrder.tsx` — timeline: grid thumbnail foto (klik → preview inline tab baru, analytics `photo_open`) + chip unduh file non-gambar; tanggal tetap `formatDate(created_at)`.
+  - `resources/js/Pages/Admin/Projects.tsx` — copy: "Deliverable / Foto Progres" + hint "tampil otomatis di timeline Pantau Pesanan klien"; label catatan "tampil di timeline pantau".
+  - `tests/Feature/ProjectTimelineTest.php` — **BARU** 3 tests: upload admin → entry timeline v1 + file ter-link + progress 20→30; payload pantau menampilkan foto (is_image + previewUrl signed) & file non-gambar (previewUrl null, downloadUrl signed); preview tanpa signature 403 → signed 200.
+- **Keputusan:**
+  - Tiap upload file = 1 entry timeline (judul auto "Progres v{n} diunggah") supaya foto/notes/tanggal terlacak — bukan hanya daftar file.
+  - Foto tampil via **signed preview inline** (tanpa signature 403) — path storage tidak terekspos; non-gambar tetap chip unduh.
+  - File lama (sebelum migrasi) tanpa `project_update_id` tetap muncul di section "File Hasil" tapi tidak di timeline — **tidak ada backfill** (keputusan: hindari tebak tanggal).
+  - `php artisan migrate` dijalankan untuk DB dev, bukan hanya test.
+- **Perintah test + hasil aktual:**
+  ```powershell
+  php artisan test --compact   # 63 passed, 1 skipped (230 assertions) — naik dari 60+1 (3 test baru)
+  npm run build                # ✓ built in 20.76s (exit 0)
+  php artisan migrate --force  # 2026_10_16_000000_add_project_update_id_to_project_files DONE 504ms
+  npx tsc --noEmit             # TrackOrder.tsx & Admin/Projects.tsx bersih (error lain pre-existing)
+  .\vendor\bin\pint --test <7 file yang diubah>  # passed
+  ```
+- **Unresolved:**
+  - Verifikasi browser: upload foto di `/admin/projects` → cek timeline pantau (thumbnail + preview klik) belum dijalankan manual.
+
+### Follow-up 7 (sesi yang sama) — P1 sisa audit pantau: ringkasan pembayaran, stepper, refresh, countdown token, tombol salin
+
+- **Fokus:** 5 item P1 sisa audit pantau yang disetujui user ("iya"): ringkasan total–dibayar–sisa; stepper status; tombol refresh/"sudah bayar"; countdown token Snap; tombol salin kode/link.
+- **File diubah:**
+  - `app/Http/Controllers/TrackOrderController.php` — payload invoice + `snapTokenExpiresAt` (ISO8601; hanya jika `status=unpaid && snap_token`; paid → null) + payload `summary` `{total, paid, remaining}` (null bila tanpa invoice).
+  - `resources/js/Pages/Public/TrackOrder.tsx`:
+    - Kartu ringkasan "Total Tagihan / Sudah Dibayar / Sisa" di atas daftar invoice.
+    - **Stepper 5 tahap** (Diterima→Review→Dikerjakan→Client Review→Selesai) dari `project.status`; status `cancelled` → banner merah.
+    - Tombol "Muat ulang status" (`router.reload` + ikon spinner) di baris aksi + "Sudah bayar? Muat ulang status" di kotak pembayaran.
+    - `SnapCountdown` mm:ss (hitung dari `snapTokenExpiresAt` server); saat habis otomatis `router.reload()` → server kirim `paymentUrl=null` → form "Generate Link Bayar QRIS" muncul menggantikan tombol vtweb.
+    - Tombol salin kode & salin link pantau (`navigator.clipboard`, feedback "tersalin" 1,8 detik, analytics `copy_link`).
+  - `tests/Feature/TrackOrderTest.php` — +1 test `test_track_page_includes_payment_summary_and_snap_token_expiry` (summary 2.220.000/2.220.000/4.440.000; expiry null utk paid, ISO utk unpaid); test render awal + assert `summary` null.
+- **Keputusan:**
+  - Countdown dihitung dari `snap_token_expires_at` di server, bukan timer 14 menit lokal — akurat meski halaman dibuka lama/refresh.
+  - Expired → `router.reload()` (bukan panel expired baru) agar tidak ada state duplikat; form Generate yang sudah ada otomatis tampil.
+  - Clipboard API native + fallback senyap; tanpa dependency/toast baru di halaman publik.
+  - `preserveScroll` TIDAK valid di `router.reload()` Inertia v3 (`ReloadOptions`) — dihapus (tsc error TS2561).
+- **Perintah test + hasil aktual:**
+  ```powershell
+  php artisan test --compact   # 64 passed, 1 skipped (250 assertions) — naik dari 63+1 (1 test baru)
+  npm run build                # ✓ built in 26.99s (exit 0)
+  npx tsc --noEmit             # TrackOrder.tsx bersih (1 fix tsc union type legacy invoice + snapTokenExpiresAt)
+  .\vendor\bin\pint --test app\Http\Controllers\TrackOrderController.php tests\Feature\TrackOrderTest.php  # passed
+  ```
+- **Unresolved:**
+  - Verifikasi browser: countdown mm:ss, auto-reload saat token habis, tombol salin, stepper, refresh setelah bayar — belum dijalankan manual.
+
+### Follow-up 8 (sesi yang sama) — Fix bug: upload foto admin tidak pernah tersimpan (nested form) + meta csrf hilang
+
+- **Laporan user:** foto yang diupload di `/admin/projects` tidak muncul di pantau; klik "Upload File" maupun "Save changes" tidak menyimpan foto.
+- **Diagnosis (empiris, bukan asumsi):**
+  - DB dev (MySQL `raycode`): `project_files` = **0 baris** (upload tidak pernah tersimpan), `project_updates` ada (Save changes pernah jalan — entry user terlihat).
+  - `Admin/Projects.tsx`: form upload (`onSubmit={uploadFile}`) **ter-nested di dalam form "Save changes"** (`onSubmit={save}`). Nested form = HTML invalid: klik "Upload File" membubble submit ke form luar → `uploadFile()` (POST upload) DAN `save()` (PATCH) jalan beruntun; visit Inertia kedua membatalkan visit pertama sebelum request upload terkirim → file tidak pernah sampai server.
+  - `app.blade.php` **tidak punya** `<meta name="csrf-token">`, padahal 2 form bayar native di `TrackOrder.tsx` mengambil `_token` dari meta itu → submit bayar dari pantau akan 419 (bug laten, ditemukan saat investigasi).
+- **Bukti pipeline server OK (bukan asumsi):** emulasi upload via HTTP nyata (curl, login session admin sementara, header `X-XSRF-TOKEN` — bukan `_token` form) ke proyek uji sementara → HTTP 302 + verifikasi DB: file `project_files/8/BMwfjI1i1Rg5tAywMCv1.webp` (dikonversi WebP oleh `ImageOptimizer`), `project_update_id=8` terisi, `project_updates` = 1, progress 20→30. Proyek/user/file uji **dibersihkan** setelah verifikasi (projects kembali 4, files 0).
+- **File diubah:**
+  - `resources/js/Pages/Admin/Projects.tsx` — form upload jadi `<div>` (bukan form ter-nested), tombol Upload jadi `type="button"` + `onClick={uploadFile}`, `uploadFile()` tanpa `preventDefault`/argument event.
+  - `resources/views/app.blade.php` — tambah `<meta name="csrf-token" content="{{ csrf_token() }}" />` (memperbaiki form bayar native pantau yang selama ini akan 419).
+  - `tests/Feature/TrackOrderTest.php` — test noindex di-rename `test_track_page_sends_noindex_header_and_csrf_meta` + assert `name="csrf-token"` tampil.
+- **Perintah test + hasil aktual:**
+  ```powershell
+  php artisan test --compact   # 64 passed, 1 skipped (251 assertions) — assertion baru csrf meta
+  npm run build                # ✓ built in 20.82s (exit 0)
+  npx tsc --noEmit             # Admin/Projects.tsx bersih
+  # Emulasi HTTP curl: login 302 → upload 302 → DB file+timeline+progress terverifikasi → data uji dibersihkan
+  ```
+- **Unresolved:**
+  - User diminta hard-refresh `/admin/projects` lalu coba Upload File lagi (form sudah diperbaiki).
+  - Verifikasi browser pembayaran dari pantau (meta csrf baru) belum dijalankan manual.
+
+### Follow-up 9 (sesi yang sama) — Deploy batch ke GitHub (branch `feature/admin-improvements-phase-2`)
+
+- **Permintaan user:** "sekarang deploy".
+- **Kondisi repo sebelum deploy:** HEAD lokal == `origin/feature/admin-improvements-phase-2` == `6d84c0a`; `origin/main` masih `6d5b1e7` (initial). Commit deploy sebelumnya (`bc8fca2 Fix production assets`, `6d84c0a hapus gambar unused`) ada di **branch feature ini** → disimpulkan jalur deploy = branch `feature/admin-improvements-phase-2` (bukan main).
+- **Artefak build:** `public/build` di-gitignore; user mengupload manual `public/build.zip` ke hosting (layout zip = `build/...` → ekstrak di `public/`). `build.zip` lama (15/10 20:26) **stale** → di-regenerate dari build terbaru. `public/build.rar` tidak diperbarui (jangan dipakai). Keduanya ditambahkan ke `.gitignore` (`3cd76a0`).
+- **Commit batch 2026-10-16 (6 commit):**
+  1. `3cd76a0` chore: ignore manual build deploy archives (build.zip/rar)
+  2. `ae472f2` feat: restrict login to admin only, disable registration, hide login CTA
+  3. `6b4ae8f` feat: blog cover upload with strict image optimization (WebP, whitelist)
+  4. `9abf82e` fix: admin portfolios paginator + PUT multipart, services hover fill light/dark
+  5. `a26a02b` feat(pantau): per-invoice payment, file download/preview/zip, WA notifications, progress timeline, admin upload fixes
+  6. docs commit (PROJECT_STATUS + WORKLOG + catatan deploy)
+- **Verifikasi sebelum push:** `php artisan test --compact` → 64 passed, 1 skipped (251 assertions); `npm run build` exit 0 (manifest 16/10 10:54); `pint --test` passed.
+- **Langkah produksi (wajib dijalankan user di hosting — dari lokal tidak ada akses server):**
+  1. `git pull` branch `feature/admin-improvements-phase-2`
+  2. `php artisan migrate --force` — **WAJIB**: migrasi `2026_10_16_000000_add_project_update_id_to_project_files` (kolom `project_files.project_update_id`; tanpa ini upload foto admin error di production)
+  3. Upload `public/build.zip` → ekstrak ke `public/` (replace `public/build/`)
+  4. `php artisan optimize:clear` (view cache — ada perubahan `app.blade.php` meta csrf)
+  5. Cek `php artisan storage:link` (unduh/preview file hasil butuh symlink `public/storage`)
+  6. Opsional: pastikan `php-zip` aktif untuk tombol "Unduh semua (.zip)" (tanpa itu muncul fallback pesan)
+- **Unresolved:**
+  - Migrasi + build di produksi belum dijalankan (menunggu user di hosting).
+  - WA notif otomatis production bergantung gateway Fonnte di `.env` hosting (di lokal hanya log/no-op bila kosong).
+  - `public/hot` jangan ikut terupload (dev only); pastikan tidak ada di server.
+
+---
+
 ## 2026-10-13 — Admin Improvements Phase 1 Selesai: ConfirmModal, Toast, Breadcrumbs, HelpTooltip, Required Asterisk & Bulk Actions
 
 - **Fokus:** Menyelesaikan 100% item Phase 1 (Quick Wins) dari `docs/PRD_Admin_Improvements.md`.
