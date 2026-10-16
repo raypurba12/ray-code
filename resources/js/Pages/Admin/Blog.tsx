@@ -5,7 +5,7 @@ import { AdminLayout } from '@/Components/layout/AdminLayout';
 import { Badge, Button, Card, Input, Textarea } from '@/Components/ui';
 import { Modal } from '@/Components/Modal';
 import { router } from '@inertiajs/react';
-import { Copy, ExternalLink, Newspaper, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Copy, ExternalLink, Image as ImageIcon, Newspaper, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from '@inertiajs/react';
 import { useConfirm } from '@/Components/useConfirm';
@@ -31,6 +31,7 @@ export default function AdminBlog({ posts }: Props) {
     const { confirm } = useConfirm();
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState<PostRow | null>(null);
+    const [coverPreview, setCoverPreview] = useState<string | null>(null);
     const { data, setData, post, put, processing, errors, reset, transform } = useForm({
         title: '',
         slug: '',
@@ -38,19 +39,28 @@ export default function AdminBlog({ posts }: Props) {
         content: '',
         category: 'Engineering',
         cover_url: '',
+        cover_file: null as File | null,
+        remove_cover: false,
         tags: '',
         is_published: true,
     });
 
+    const clearCoverPreview = () => {
+        if (coverPreview) URL.revokeObjectURL(coverPreview);
+        setCoverPreview(null);
+    };
+
     const openCreate = () => {
         setEditing(null);
+        clearCoverPreview();
         reset();
-        setData({ title: '', slug: '', excerpt: '', content: '', category: 'Engineering', cover_url: '', tags: '', is_published: true });
+        setData({ title: '', slug: '', excerpt: '', content: '', category: 'Engineering', cover_url: '', cover_file: null, remove_cover: false, tags: '', is_published: true });
         setModalOpen(true);
     };
 
     const openEdit = (row: PostRow) => {
         setEditing(row);
+        clearCoverPreview();
         setData({
             title: row.title,
             slug: row.slug,
@@ -58,6 +68,8 @@ export default function AdminBlog({ posts }: Props) {
             content: row.content,
             category: row.category,
             cover_url: row.cover_url ?? '',
+            cover_file: null,
+            remove_cover: false,
             tags: (row.tags ?? []).join(', '),
             is_published: !!row.published_at,
         });
@@ -66,6 +78,7 @@ export default function AdminBlog({ posts }: Props) {
 
     const clonePost = (row: PostRow) => {
         setEditing(null);
+        clearCoverPreview();
         reset();
         setData({
             title: `${row.title} (Salinan)`,
@@ -74,29 +87,59 @@ export default function AdminBlog({ posts }: Props) {
             content: row.content,
             category: row.category,
             cover_url: row.cover_url ?? '',
+            cover_file: null,
+            remove_cover: false,
             tags: (row.tags ?? []).join(', '),
             is_published: false,
         });
         setModalOpen(true);
     };
 
+    const handleCoverFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (coverPreview) URL.revokeObjectURL(coverPreview);
+        setData('cover_file', file);
+        setData('remove_cover', false);
+        setCoverPreview(URL.createObjectURL(file));
+    };
+
+    const clearCoverFile = () => {
+        setData('cover_file', null);
+        clearCoverPreview();
+        const el = document.getElementById('cover_file_input') as HTMLInputElement | null;
+        if (el) el.value = '';
+    };
+
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
+        const hasCoverFile = data.cover_file !== null;
+
         transform(() => ({
             ...data,
+            ...(editing && hasCoverFile ? { _method: 'put' } : {}),
             cover_url: data.cover_url || undefined,
+            cover_file: data.cover_file ?? undefined,
+            remove_cover: data.remove_cover,
             slug: data.slug || undefined,
             tags: data.tags.split(',').map((t) => t.trim()).filter(Boolean),
         }));
 
         if (editing) {
-            put(R.adminBlogUpdate(editing.id), {
+            const options = {
                 preserveScroll: true,
                 onSuccess: () => {
                     setModalOpen(false);
                     setEditing(null);
                 },
-            });
+            };
+
+            if (hasCoverFile) {
+                // PHP tidak mem-parsing body multipart untuk PUT asli — kirim POST + spoof _method
+                post(R.adminBlogUpdate(editing.id), options);
+            } else {
+                put(R.adminBlogUpdate(editing.id), options);
+            }
         } else {
             post(R.adminBlogStore, {
                 preserveScroll: true,
@@ -182,11 +225,39 @@ export default function AdminBlog({ posts }: Props) {
                     <Input label="Slug (auto jika kosong)" value={data.slug} onChange={(e) => setData('slug', e.target.value)} error={errors.slug} placeholder="judul-artikel" />
                     <div className="grid gap-5 sm:grid-cols-2">
                         <Input label="Kategori" value={data.category} onChange={(e) => setData('category', e.target.value)} error={errors.category} required />
-                        <Input label="URL Cover (opsional)" type="url" value={data.cover_url} onChange={(e) => setData('cover_url', e.target.value)} error={errors.cover_url as string} placeholder="https://.../cover.jpg" />
+                        <Input label="URL Cover eksternal (opsional)" type="url" value={data.cover_url} onChange={(e) => setData('cover_url', e.target.value)} error={errors.cover_url as string} placeholder="https://.../cover.jpg" />
                     </div>
-                    {data.cover_url && (
+                    <div className="space-y-2">
+                        <span className="block text-sm font-medium text-slate-700 dark:text-slate-300">Upload Cover (opsional)</span>
+                        <div className="flex flex-wrap items-center gap-3">
+                            <label htmlFor="cover_file_input" className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
+                                <ImageIcon className="size-4" />
+                                {data.cover_file ? 'Ganti Foto' : 'Pilih Foto'}
+                            </label>
+                            <input id="cover_file_input" type="file" accept=".jpg,.jpeg,.png,.webp,.gif,.bmp,.avif" onChange={handleCoverFile} className="hidden" />
+                            {data.cover_file && (
+                                <>
+                                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                                        {data.cover_file.name} ({(data.cover_file.size / 1024 / 1024).toFixed(2)} MB)
+                                    </span>
+                                    <button type="button" onClick={clearCoverFile} aria-label="Batalkan file cover" className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700">
+                                        <X className="size-4" />
+                                    </button>
+                                </>
+                            )}
+                            {editing?.cover_url && !data.cover_file && (
+                                <label className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                                    <input type="checkbox" checked={data.remove_cover} onChange={(e) => setData('remove_cover', e.target.checked)} className="size-4 rounded border-slate-300 text-red-600" />
+                                    Hapus cover saat ini
+                                </label>
+                            )}
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">File upload diprioritaskan daripada URL. JPG, PNG, WebP, GIF, BMP, AVIF · maks 10 MB · otomatis di-resize &amp; dikompres.</p>
+                        {errors.cover_file && <p className="text-xs text-red-600">{errors.cover_file}</p>}
+                    </div>
+                    {(coverPreview || data.cover_url) && (
                         <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-slate-800">
-                            <img src={data.cover_url} alt="Preview cover" className="h-48 w-full object-cover" onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')} />
+                            <img src={coverPreview ?? data.cover_url} alt="Preview cover" className="h-48 w-full object-cover" onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')} />
                         </div>
                     )}
                     <Input label="Tag (pisahkan dengan koma)" placeholder="laravel, performance" value={data.tags} onChange={(e) => setData('tags', e.target.value)} error={errors.tags as string} />
