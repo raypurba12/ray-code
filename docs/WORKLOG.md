@@ -283,6 +283,17 @@ Template entri:
 
 ---
 
+### Follow-up 11 (sesi yang sama) — Auto-deploy pindah jalur: cron pull-based (SSH dari luar diblokir hosting)
+
+- **Temuan:** GitHub Actions SSH gagal: `ssh.ParsePrivateKey: no key found` (paste secret salah) + `dial tcp 202.155.137.39:22 connect: connection refused`. Verifikasi independen dari komputer lokal: TCP 202.155.137.39 / toscana.id.rapidplex.com port **22, 2222, 65002 semuanya tertutup**. Kesimpulan: hosting (rapidplex) tidak menerima SSH dari luar — user selama ini memakai **Terminal cPanel** (bukti: `echo $SSH_CONNECTION` kosong). Jalur GitHub-Actions-SSH **tidak bisa dipakai**.
+- **Solusi pengganti:** model cron pull-based, tanpa SSH masuk:
+  - `auto-deploy.sh` (baru, root repo) — untuk cron: lock via `mkdir` (anti tumpang-tindih), PATH bootstrap (`/usr/local/bin`, `nodevenv`, `ea-php`), cek `git fetch` + bandingkan HEAD vs `origin/<branch>`, kalau beda jalankan `deploy.sh`, log ke `~/raycode-deploy.log`.
+  - `.github/workflows/deploy.yml` **dihapus** (commit) — run SSH tidak dipakai lagi; secrets GitHub boleh dihapus.
+- **Cara aktivasi (user, di cPanel):** `cd ~/ray-code && git pull` → test `bash ~/ray-code/auto-deploy.sh` → cPanel → **Cron Jobs** → setiap 5 menit → `bash /home/raycodem/ray-code/auto-deploy.sh`. Verifikasi: cek `~/raycode-deploy.log`; `which git php npm node` untuk memastikan PATH.
+- **Unresolved:** aktivasi cron + test build server belum dikonfirmasi (`which npm` belum ada datanya); setelah cron jalan, alur deploy = push ke GitHub → hosting update ≤5 menit.
+
+---
+
 ## 2026-10-13 — Admin Improvements Phase 1 Selesai: ConfirmModal, Toast, Breadcrumbs, HelpTooltip, Required Asterisk & Bulk Actions
 
 - **Fokus:** Menyelesaikan 100% item Phase 1 (Quick Wins) dari `docs/PRD_Admin_Improvements.md`.
