@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="csrf-token" content="{{ csrf_token() }}" />
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#090b11" media="(prefers-color-scheme: dark)" />
     <title inertia>{{ $page['props']['title'] ?? 'Raycode — Studio Pengembangan Web' }}</title>

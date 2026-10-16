@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Models\ProjectFile;
 use App\Models\ProjectUpdate;
+use App\Services\ImageOptimizer;
+use App\Services\WhatsappService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
@@ -27,7 +30,7 @@ class ProjectController extends Controller
         ]);
     }
 
-    // PRD Sprint 2 FR-7: upload deliverable
+    // PRD Sprint 2 FR-7: upload deliverable / foto progres — selalu masuk timeline pantau
     public function uploadFile(Request $request, Project $project)
     {
         $request->validate([
@@ -36,33 +39,41 @@ class ProjectController extends Controller
         ]);
 
         $uploaded = $request->file('file');
-        $path = $uploaded->store('project_files/'.$project->id, 'public');
+        $isImage = str_starts_with((string) $uploaded->getMimeType(), 'image/');
+
+        if ($isImage) {
+            // Foto progres dioptimasi seperti cover blog (resize + WebP) agar thumbnail pantau ringan
+            $path = app(ImageOptimizer::class)->store($uploaded, 'project_files/'.$project->id, 1600, 'file');
+        } else {
+            $path = $uploaded->store('project_files/'.$project->id, 'public');
+        }
+
         $lastVersion = $project->files()->max('version') ?? 0;
+
+        // Timeline entry selalu dibuat — riwayat progres (foto + catatan + tanggal) tampil di pantau
+        $update = ProjectUpdate::create([
+            'project_id' => $project->id,
+            'title' => 'Progres v'.($lastVersion + 1).' diunggah',
+            'notes' => $request->input('version_notes'),
+        ]);
 
         $pf = ProjectFile::create([
             'project_id' => $project->id,
+            'project_update_id' => $update->id,
             'file_name' => $uploaded->getClientOriginalName(),
             'disk_path' => $path,
-            'mime' => $uploaded->getMimeType(),
-            'size' => $uploaded->getSize(),
+            'mime' => Storage::disk('public')->mimeType($path),
+            'size' => Storage::disk('public')->size($path),
             'version' => $lastVersion + 1,
             'uploaded_by' => $request->user()->id,
         ]);
-
-        if ($request->filled('version_notes')) {
-            ProjectUpdate::create([
-                'project_id' => $project->id,
-                'title' => 'Deliverable v'.$pf->version.' diunggah',
-                'notes' => $request->input('version_notes'),
-            ]);
-        }
 
         // auto bump progress if not completed
         if ($project->progress < 90) {
             $project->increment('progress', 10);
         }
 
-        return back()->with('success', 'File '.$pf->file_name.' v'.$pf->version.' diunggah.');
+        return back()->with('success', 'File '.$pf->file_name.' v'.$pf->version.' diunggah + masuk timeline pantau.');
     }
 
     public function destroyFile(Project $project, ProjectFile $file)
@@ -82,6 +93,7 @@ class ProjectController extends Controller
             'budget' => ['required', 'integer', 'min:0'],
         ]);
 
+        $previousProgress = $project->progress;
         $project->update($validated);
 
         if ($request->filled('update_title')) {
@@ -90,6 +102,19 @@ class ProjectController extends Controller
                 'title' => $request->input('update_title'),
                 'notes' => $request->input('update_notes'),
             ]);
+        }
+
+        // Notifikasi WA otomatis saat progress berubah (try/catch — tidak boleh menggagalkan aksi admin)
+        if ($project->progress !== $previousProgress) {
+            $note = 'Progress: '.$previousProgress.'% → '.$project->progress.'%';
+            if ($request->filled('update_notes')) {
+                $note .= ' — '.$request->input('update_notes');
+            }
+            try {
+                app(WhatsappService::class)->notifyProjectUpdate($project->fresh('user'), $note);
+            } catch (\Throwable $e) {
+                Log::warning('WA progress notif gagal', ['project' => $project->id, 'msg' => $e->getMessage()]);
+            }
         }
 
         return back()->with('success', "Project '{$project->title}' updated.");

@@ -2,12 +2,12 @@ import { PublicLayout } from '@/Components/layout/PublicLayout';
 import { SeoHead } from '@/Components/SeoHead';
 import { Reveal } from '@/Components/Reveal';
 import { Badge, Button } from '@/Components/ui';
-import { formatIDR, formatDate } from '@/lib/utils';
+import { formatIDR, formatDate, formatBytes } from '@/lib/utils';
 import { trackEvent } from '@/lib/analytics';
 import { Link, router, usePage } from '@inertiajs/react';
 import { motion } from 'framer-motion';
-import { Search, Package, CreditCard, MessageCircle, Clock, CheckCircle2, Truck, Eye, ExternalLink, FileText } from 'lucide-react';
-import { useState } from 'react';
+import { Search, Package, CreditCard, MessageCircle, Clock, CheckCircle2, Truck, Eye, ExternalLink, FileText, Download, FolderDown, RefreshCw, Copy, Check } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 import { useI18n } from '@/lib/i18n';
 
@@ -22,12 +22,15 @@ interface TrackProps {
     budget: number;
     deadline: string | null;
     service: { title:string; slug:string } | null;
-    updates: { id:number; title:string; notes:string|null; created_at:string }[];
+    updates: { id:number; title:string; notes:string|null; created_at:string; files?: { id:number; file_name:string; mime:string|null; size:number|null; is_image:boolean; previewUrl:string|null; downloadUrl:string }[] }[];
     masked_wa: string | null;
     created_at: string;
   } | null;
   invoice: { number:string; total:number; status:string; payment_status:string|null; due_date:string|null; paid_at:string|null; kind?:string|null; label?:string|null } | null;
-  invoices?: { id:number; number:string; total:number; amount:number; tax:number; status:string; payment_status:string|null; due_date:string|null; paid_at:string|null; kind:string; label:string; paymentUrl:string|null; pdfUrl:string }[] | null;
+  invoices?: { id:number; number:string; total:number; amount:number; tax:number; status:string; payment_status:string|null; due_date:string|null; paid_at:string|null; kind:string; label:string; paymentUrl:string|null; pdfUrl:string; snapTokenExpiresAt?:string|null }[] | null;
+  summary?: { total:number; paid:number; remaining:number } | null;
+  files?: { id:number; file_name:string; mime:string|null; size:number|null; version:number; created_at:string; downloadUrl:string }[] | null;
+  filesZipUrl?: string | null;
   paymentUrl: string | null;
   notFound: boolean;
 }
@@ -47,9 +50,54 @@ function kindMeta(kind:string) {
   return { label:'Invoice', desc:'Tagihan proyek', color:'bg-slate-100 text-slate-700 ring-slate-200', icon:'📄' };
 }
 
-export default function TrackOrder({ code, project, invoice, invoices, paymentUrl, notFound }: TrackProps) {
+const stepKeys = ['pending','in_review','in_progress','review','completed'];
+const stepLabels = ['Diterima','Review','Dikerjakan','Client Review','Selesai'];
+
+function secondsLeft(iso:string|null|undefined){
+  if (!iso) return 0;
+  return Math.max(0, Math.floor((new Date(iso).getTime()-Date.now())/1000));
+}
+
+function SnapCountdown({ expiresAt, onExpire, className }: { expiresAt:string|null; onExpire:()=>void; className?:string }) {
+  const [left, setLeft] = useState(()=>secondsLeft(expiresAt));
+  const onExpireRef = useRef(onExpire);
+  onExpireRef.current = onExpire;
+
+  useEffect(()=>{
+    if (!expiresAt) return;
+    setLeft(secondsLeft(expiresAt));
+    const id = setInterval(()=>{
+      const s = secondsLeft(expiresAt);
+      setLeft(s);
+      if (s <= 0) { clearInterval(id); onExpireRef.current(); }
+    }, 1000);
+    return ()=>clearInterval(id);
+  }, [expiresAt]);
+
+  if (!expiresAt || left <= 0) return null;
+  const mm = String(Math.floor(left/60)).padStart(2,'0');
+  const ss = String(left%60).padStart(2,'0');
+  return <span className={`font-mono font-bold ${className ?? ''}`}>{mm}:{ss}</span>;
+}
+
+export default function TrackOrder({ code, project, invoice, invoices, summary, files, filesZipUrl, paymentUrl, notFound }: TrackProps) {
   const { t } = useI18n();
   const [input, setInput] = useState(code ?? '');
+  const [refreshing, setRefreshing] = useState(false);
+  const [copied, setCopied] = useState<string|null>(null);
+
+  const refresh = () => {
+    setRefreshing(true);
+    router.reload({ onFinish:()=>setRefreshing(false) });
+  };
+  const copyText = (text:string, key:string) => {
+    navigator.clipboard?.writeText(text).then(()=>{
+      setCopied(key);
+      setTimeout(()=>setCopied(null), 1800);
+      trackEvent('copy_link', { key });
+    }).catch(()=>{});
+  };
+  const trackLink = typeof window!=='undefined' ? window.location.origin+'/pantau-pesanan?code='+(project?.order_code ?? '') : '';
   const { settings } = usePage<{settings:Record<string,string>}>().props as any;
   const waRaw = settings?.whatsapp ?? '+6281234567890';
   const waNum = String(waRaw).replace(/[^0-9]/g,'');
@@ -63,11 +111,11 @@ export default function TrackOrder({ code, project, invoice, invoices, paymentUr
     router.get('/pantau-pesanan', {code:c}, {preserveState:false});
   };
 
-  const list = invoices && invoices.length ? invoices : (invoice ? [{ id:0, number:invoice.number, total:invoice.total, amount:0, tax:0, status:invoice.status, payment_status:invoice.payment_status, due_date:invoice.due_date, paid_at:invoice.paid_at, kind: invoice.kind ?? 'full', label: invoice.label ?? invoice.number, paymentUrl }] : []);
+  const list = invoices && invoices.length ? invoices : (invoice ? [{ id:0, number:invoice.number, total:invoice.total, amount:0, tax:0, status:invoice.status, payment_status:invoice.payment_status, due_date:invoice.due_date, paid_at:invoice.paid_at, kind: invoice.kind ?? 'full', label: invoice.label ?? invoice.number, paymentUrl, pdfUrl:'', snapTokenExpiresAt:null }] : []);
 
   return (
     <PublicLayout>
-      <SeoHead title={`${t('track.title')} — Raycode`} description={t('track.subtitle')} />
+      <SeoHead title={`${t('track.title')} — Raycode`} description={t('track.subtitle')} noIndex />
       <section className="relative overflow-hidden pt-6">
         <div className="bg-grid mask-fade-y pointer-events-none absolute inset-0" aria-hidden />
         <div className="relative mx-auto max-w-3xl px-5 pt-10 pb-24 lg:px-8">
@@ -118,6 +166,22 @@ export default function TrackOrder({ code, project, invoice, invoices, paymentUr
                   <p className="mt-1 text-xs text-ink-3">{project.service?.title ?? 'Custom'} • Budget {formatIDR(project.budget)} (DP 50% + Pelunasan 50%) • Deadline {project.deadline ? formatDate(project.deadline) : '-'}</p>
                   <p className="mt-2 text-xs text-ink-4">{statusMap[project.status]?.desc}</p>
 
+                  {project.status !== 'cancelled' ? (
+                    <div className="mt-4 flex gap-1.5" aria-label="Tahapan pesanan">
+                      {stepKeys.map((s,i)=>{
+                        const active = stepKeys.indexOf(project.status) >= i;
+                        return (
+                          <div key={s} className="flex-1">
+                            <div className={`h-1.5 rounded-full ${active ? 'bg-brand-600' : 'bg-slate-200 dark:bg-white/10'}`} />
+                            <p className={`mt-1.5 text-[10px] font-semibold leading-tight ${active ? 'text-ink-2' : 'text-ink-4'}`}>{stepLabels[i]}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 dark:bg-red-500/10 dark:text-red-300">Pesanan dibatalkan — hubungi admin via WA bila perlu klarifikasi.</p>
+                  )}
+
                   <div className="mt-4">
                     <div className="flex items-center justify-between text-xs"><span className="font-medium text-ink-3">Progress</span><span className="font-mono font-bold">{project.progress}%</span></div>
                     <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10"><div className="h-full rounded-full bg-brand-600" style={{width: `${project.progress}%`}} /></div>
@@ -132,7 +196,25 @@ export default function TrackOrder({ code, project, invoice, invoices, paymentUr
                             <span className="absolute -left-[21px] top-1 size-2.5 rounded-full bg-brand-500 ring-4 ring-brand-50 dark:ring-white/10" />
                             <p className="text-sm font-semibold text-ink">{u.title}</p>
                             {u.notes && <p className="text-xs leading-relaxed text-ink-3">{u.notes}</p>}
-                            <p className="font-mono text-xs text-ink-4">{formatDate(u.created_at)}</p>
+                            {u.files && u.files.length > 0 && (
+                              <div className="mt-2 space-y-2">
+                                {u.files.some(f=>f.is_image && f.previewUrl) && (
+                                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                                    {u.files.filter(f=>f.is_image && f.previewUrl).map(f=> (
+                                      <a key={f.id} href={f.previewUrl!} target="_blank" rel="noreferrer" onClick={()=>trackEvent('photo_open', { code: project.order_code, file: f.file_name })} className="group overflow-hidden rounded-lg border border-line bg-slate-100 dark:bg-white/5">
+                                        <img src={f.previewUrl!} alt={f.file_name} loading="lazy" className="h-24 w-full object-cover transition duration-300 group-hover:scale-105" />
+                                      </a>
+                                    ))}
+                                  </div>
+                                )}
+                                {u.files.filter(f=>!f.is_image).map(f=> (
+                                  <a key={f.id} href={f.downloadUrl} onClick={()=>trackEvent('file_download', { code: project.order_code, file: f.file_name })} className="inline-flex max-w-full items-center gap-1.5 rounded-lg border border-line bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-ink-2 hover:bg-slate-100 dark:bg-white/[0.04] dark:hover:bg-white/10">
+                                    <FileText className="size-3.5 shrink-0" /> <span className="truncate">{f.file_name}</span> <span className="shrink-0 text-ink-4">{formatBytes(f.size)}</span> <Download className="size-3 shrink-0" />
+                                  </a>
+                                ))}
+                              </div>
+                            )}
+                            <p className="mt-1 font-mono text-xs text-ink-4">{formatDate(u.created_at)}</p>
                           </li>
                         ))}
                       </ul>
@@ -146,6 +228,7 @@ export default function TrackOrder({ code, project, invoice, invoices, paymentUr
 
                   <div className="mt-4 flex flex-wrap gap-2">
                     <a href={waHref} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-xl bg-[#25D366] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#1ebe5a]"><MessageCircle className="size-4" /> Tanya Admin via WA</a>
+                    <button type="button" onClick={refresh} className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-card px-4 py-2.5 text-sm font-bold text-ink-2 transition hover:bg-slate-50 dark:hover:bg-white/5"><RefreshCw className={`size-4 ${refreshing ? 'animate-spin' : ''}`} /> Muat ulang status</button>
                     {project.masked_wa && <span className="inline-flex items-center gap-1 rounded-full border border-line bg-card px-3 py-2 font-mono text-xs text-ink-3"><Eye className="size-3" /> {project.masked_wa}</span>}
                   </div>
                 </div>
@@ -154,6 +237,22 @@ export default function TrackOrder({ code, project, invoice, invoices, paymentUr
               {/* Invoices — DP & Pelunasan */}
               {list.length ? (
                 <div className="space-y-4">
+                  {summary && summary.total > 0 && (
+                    <div className="grid grid-cols-3 gap-3 rounded-2xl border border-line bg-card p-4 shadow-sm">
+                      <div>
+                        <p className="text-[10px] font-bold tracking-widest text-ink-4 uppercase">Total Tagihan</p>
+                        <p className="mt-1 font-mono text-sm font-bold text-ink">{formatIDR(summary.total)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold tracking-widest text-ink-4 uppercase">Sudah Dibayar</p>
+                        <p className="mt-1 font-mono text-sm font-bold text-emerald-600">{formatIDR(summary.paid)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold tracking-widest text-ink-4 uppercase">Sisa</p>
+                        <p className={`mt-1 font-mono text-sm font-bold ${summary.remaining > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>{formatIDR(summary.remaining)}</p>
+                      </div>
+                    </div>
+                  )}
                   {list.map(inv => {
                     const meta = kindMeta(inv.kind);
                     const isPaid = inv.status==='paid';
@@ -180,17 +279,22 @@ export default function TrackOrder({ code, project, invoice, invoices, paymentUr
                        {!isPaid && inv.paymentUrl && (
                         <div className={`mt-4 rounded-xl border p-4 ${isDp ? 'border-amber-200 bg-amber-50 dark:border-amber-500/20 dark:bg-amber-500/10' : 'border-violet-200 bg-violet-50 dark:border-violet-500/20 dark:bg-violet-500/10'}`}>
                           <p className={`text-sm font-bold ${isDp?'text-amber-800 dark:text-amber-300':'text-violet-800 dark:text-violet-300'}`}>{isDp?'Siap bayar DP via QRIS':'Siap pelunasan via QRIS'}</p>
-                          <p className={`mt-1 text-xs leading-relaxed ${isDp?'text-amber-700/80 dark:text-amber-200/70':'text-violet-700/80 dark:text-violet-200/70'}`}>Klik tombol di bawah untuk buka halaman pembayaran Midtrans (QRIS, Gopay, VA). Link QRIS valid ~14 menit, bisa refresh.</p>
+                          <p className={`mt-1 text-xs leading-relaxed ${isDp?'text-amber-700/80 dark:text-amber-200/70':'text-violet-700/80 dark:text-violet-200/70'}`}>Klik tombol di bawah untuk buka halaman pembayaran Midtrans (QRIS, Gopay, VA). Link berlaku <SnapCountdown expiresAt={inv.snapTokenExpiresAt ?? null} onExpire={refresh} className={isDp?'text-amber-900 dark:text-amber-200':'text-violet-900 dark:text-violet-200'} /> — jika kadaluarsa, halaman diperbarui otomatis.</p>
                           <form method="POST" action={`/track/${project.order_code}/pay`} onSubmit={() => trackEvent('snap_pay_initiate', { code: project.order_code, kind: inv.kind, amount: inv.total })} className="mt-3">
                             <input type="hidden" name="_token" value={(document.querySelector('meta[name=csrf-token]') as HTMLMetaElement)?.content ?? ''} />
+                            <input type="hidden" name="invoice" value={inv.number} />
                             <button type="submit" className={`inline-flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white ${isDp?'bg-amber-600 hover:bg-amber-700':'bg-violet-600 hover:bg-violet-700'}`}><CreditCard className="size-4" /> Bayar {isDp?'DP':'Pelunasan'} — {formatIDR(inv.total)}</button>
                           </form>
-                          <a href={inv.paymentUrl} target="_blank" rel="noreferrer" onClick={() => trackEvent('snap_pay_open', { code: project.order_code, kind: inv.kind })} className={`mt-2 inline-flex items-center gap-1 text-xs font-semibold hover:underline ${isDp?'text-amber-700':'text-violet-700'}`}><ExternalLink className="size-3" /> Buka link langsung (vtweb)</a>
+                          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <a href={inv.paymentUrl} target="_blank" rel="noreferrer" onClick={() => trackEvent('snap_pay_open', { code: project.order_code, kind: inv.kind })} className={`inline-flex items-center gap-1 text-xs font-semibold hover:underline ${isDp?'text-amber-700':'text-violet-700'}`}><ExternalLink className="size-3" /> Buka link langsung (vtweb)</a>
+                            <button type="button" onClick={refresh} className={`inline-flex items-center gap-1 text-xs font-semibold hover:underline ${isDp?'text-amber-700':'text-violet-700'}`}><RefreshCw className={`size-3 ${refreshing ? 'animate-spin' : ''}`} /> Sudah bayar? Muat ulang status</button>
+                          </div>
                         </div>
                       )}
                       {!isPaid && !inv.paymentUrl && (
                         <form method="POST" action={`/track/${project.order_code}/pay`} onSubmit={() => trackEvent('snap_pay_generate', { code: project.order_code, kind: inv.kind, amount: inv.total })} className="mt-4">
                           <input type="hidden" name="_token" value={(document.querySelector('meta[name=csrf-token]') as HTMLMetaElement)?.content ?? ''} />
+                          <input type="hidden" name="invoice" value={inv.number} />
                           <button type="submit" className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-bold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900"><CreditCard className="size-4" /> Generate Link Bayar QRIS — {formatIDR(inv.total)}</button>
                         </form>
                       )}
@@ -203,8 +307,38 @@ export default function TrackOrder({ code, project, invoice, invoices, paymentUr
                 <div className="rounded-2xl border border-dashed border-line bg-card p-6 text-center text-sm text-ink-3">Belum ada invoice untuk pesanan ini.</div>
               )}
 
+              {/* File hasil (deliverable) */}
+              {files && files.length > 0 && (
+                <div className="rounded-2xl border border-line bg-card p-6 shadow-sm">
+                  <h3 className="flex items-center gap-2 text-sm font-bold text-ink"><FolderDown className="size-4 text-brand-600" /> File Hasil ({files.length})</h3>
+                  <p className="mt-1 text-xs text-ink-4">Semua file hasil untuk pesanan ini. Link unduh berlaku 30 menit — muat ulang halaman ini jika kadaluarsa.</p>
+                  <ul className="mt-3 space-y-2">
+                    {files.map(f => (
+                      <li key={f.id} className="flex items-center justify-between gap-3 rounded-xl border border-line bg-slate-50 px-3 py-2.5 dark:bg-white/[0.04]">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-ink">{f.file_name}</p>
+                          <p className="text-xs text-ink-4">v{f.version} • {formatBytes(f.size)} • {formatDate(f.created_at)}</p>
+                        </div>
+                        <a href={f.downloadUrl} onClick={() => trackEvent('file_download', { code: project.order_code, file: f.file_name })} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-bold text-white hover:bg-brand-700"><Download className="size-3.5" /> Unduh</a>
+                      </li>
+                    ))}
+                  </ul>
+                  {filesZipUrl && (
+                    <a href={filesZipUrl} onClick={() => trackEvent('files_zip_download', { code: project.order_code })} className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-line px-4 py-2.5 text-sm font-bold text-ink transition hover:bg-slate-50 dark:hover:bg-white/5"><FolderDown className="size-4" /> Unduh semua (.zip)</a>
+                  )}
+                </div>
+              )}
+
               <div className="rounded-xl border border-line bg-card p-4 text-center text-xs text-ink-4">
-                Simpan kode <span className="font-mono font-bold text-ink">{project.order_code}</span> untuk cek lagi nanti. Link pantau: <span className="font-mono">{typeof window!=='undefined' ? window.location.origin+'/pantau-pesanan?code='+project.order_code : ''}</span>
+                <p>Simpan kode / link pantau untuk cek lagi nanti.</p>
+                <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                  <button type="button" onClick={()=>copyText(project.order_code, 'code')} className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 font-mono text-xs font-bold text-ink transition hover:bg-slate-50 dark:hover:bg-white/5">
+                    {copied==='code' ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />} {copied==='code' ? 'Kode tersalin' : project.order_code}
+                  </button>
+                  <button type="button" onClick={()=>copyText(trackLink, 'link')} className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs font-bold text-ink transition hover:bg-slate-50 dark:hover:bg-white/5">
+                    {copied==='link' ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />} {copied==='link' ? 'Link tersalin' : 'Salin link pantau'}
+                  </button>
+                </div>
               </div>
             </motion.div>
           )}

@@ -131,10 +131,9 @@ function ProjectRow({
 
     const { confirm } = useConfirm();
 
-    // file upload state
+    // file upload state (BUKAN form terpisah di dalam form save — nested form bikin submit saling bentrok)
     const fileForm = useForm<{file: File | null; version_notes: string}>({file: null as any, version_notes: ''});
-    const uploadFile = (e: React.FormEvent) => {
-        e.preventDefault();
+    const uploadFile = () => {
         if (!fileForm.data.file) return;
         fileForm.post(R.adminProjectsFiles(project.id), { preserveScroll:true, forceFormData:true, onSuccess:()=> fileForm.reset() });
     };
@@ -257,7 +256,8 @@ function ProjectRow({
 
                                     {/* Deliverable files FR-7 */}
                                     <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
-                                        <p className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white"><Upload className="size-4"/> Deliverable Files <span className="text-xs font-normal text-slate-500">v increment otomatis</span></p>
+                                        <p className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white"><Upload className="size-4"/> Deliverable / Foto Progres <span className="text-xs font-normal text-slate-500">v increment otomatis</span></p>
+                                        <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">Foto (JPG/PNG/WebP) & file tampil otomatis di timeline Pantau Pesanan klien.</p>
                                         {project.files && project.files.length>0 ? (
                                             <ul className="mt-3 space-y-2">
                                                 {project.files.map(f=> (
@@ -272,12 +272,12 @@ function ProjectRow({
                                             </ul>
                                         ) : <p className="mt-2 text-xs text-slate-500">Belum ada file.</p>}
 
-                                        <form onSubmit={uploadFile} className="mt-4 space-y-3 border-t border-dashed border-slate-200 pt-4 dark:border-slate-700">
+                                        <div className="mt-4 space-y-3 border-t border-dashed border-slate-200 pt-4 dark:border-slate-700">
                                             <input type="file" onChange={e=> fileForm.setData('file', e.target.files?.[0] ?? null)} className="block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-4 file:py-2 file:text-xs file:font-bold file:text-white hover:file:bg-slate-800 dark:file:bg-white dark:file:text-slate-900" />
-                                            <Input label="Catatan versi (opsional, jadi timeline)" value={fileForm.data.version_notes} onChange={e=>fileForm.setData('version_notes', e.target.value)} placeholder="Mis: Revisi homepage final" />
+                                            <Input label="Catatan versi (opsional, tampil di timeline pantau)" value={fileForm.data.version_notes} onChange={e=>fileForm.setData('version_notes', e.target.value)} placeholder="Mis: Revisi homepage final" />
                                             {fileForm.errors.file && <p className="text-xs text-red-600">{fileForm.errors.file}</p>}
-                                            <Button type="submit" size="sm" disabled={fileForm.processing || !fileForm.data.file}>{fileForm.processing?'Mengunggah...':'Upload File'}</Button>
-                                        </form>
+                                            <Button type="button" size="sm" disabled={fileForm.processing || !fileForm.data.file} onClick={uploadFile}>{fileForm.processing?'Mengunggah...':'Upload File'}</Button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

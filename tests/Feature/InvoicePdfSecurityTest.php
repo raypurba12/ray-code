@@ -60,6 +60,7 @@ class InvoicePdfSecurityTest extends TestCase
         $url = URL::temporarySignedRoute('invoice.pdf', now()->addMinutes(30), ['code' => $project->order_code, 'invoice' => 'INV-TEST-PDF-002']);
         $response = $this->get($url);
         $response->assertStatus(200);
+        $response->assertHeader('X-Robots-Tag', 'noindex, nofollow');
     }
 
     public function test_owner_authenticated_can_access_without_signature(): void

@@ -70,6 +70,66 @@ WA;
     }
 
     /**
+     * Bangun pesan WA untuk update status/progress proyek (notifikasi otomatis admin)
+     */
+    public function buildProjectUpdateMessage(Project $project, ?string $note = null): string
+    {
+        $sapaan = $project->user->name ?? 'Kak';
+        $label = Project::STATUS_LABELS[$project->status] ?? $project->status;
+        $trackUrl = url('/pantau-pesanan?code='.$project->order_code);
+
+        $hint = match ($project->status) {
+            'pending' => 'Pesanan diterima — menunggu review admin.',
+            'in_review' => 'Tim sedang mereview kebutuhan kamu.',
+            'in_progress' => 'Pengerjaan sudah dimulai.',
+            'review' => 'Hasil siap dicek — mohon review & feedback.',
+            'completed' => 'Proyek selesai 100%.',
+            'cancelled' => 'Pesanan dibatalkan.',
+            default => '',
+        };
+
+        $lines = [
+            "Halo {$sapaan} — update pesanan {$project->order_code}",
+            '',
+            "Judul: {$project->title}",
+            "Status: {$label} ({$project->progress}%)",
+        ];
+        if ($hint) {
+            $lines[] = '';
+            $lines[] = $hint;
+        }
+        if ($note) {
+            $lines[] = '';
+            $lines[] = 'Catatan: '.$note;
+        }
+        $lines[] = '';
+        $lines[] = 'Cek detail & progress:';
+        $lines[] = $trackUrl;
+        $lines[] = '';
+        $lines[] = '- Raycode';
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Kirim notifikasi update status/progress ke WA klien (auto).
+     * Caller wajib bungkus try/catch — kegagalan WA tidak boleh menggagalkan aksi admin.
+     */
+    public function notifyProjectUpdate(Project $project, ?string $note = null): array
+    {
+        $project->loadMissing('user');
+        $phone = $project->client_wa_cache ?? $project->user->phone ?? null;
+
+        if (! $phone) {
+            Log::info('WA project update skipped (no phone)', ['project' => $project->id]);
+
+            return ['sent' => false, 'via' => 'none', 'waLink' => null];
+        }
+
+        return $this->send($phone, $this->buildProjectUpdateMessage($project, $note));
+    }
+
+    /**
      * Generate wa.me link (ringan, tanpa API) — admin tinggal klik kirim
      */
     public function waLink(string $phone, string $message): string
