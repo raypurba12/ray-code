@@ -2,22 +2,16 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-echo "==> 1/6 Pull kode terbaru"
+echo "==> 1/4 Pull kode terbaru (termasuk build frontend)"
 git pull --ff-only
 
-echo "==> 2/6 Install dependency frontend"
-npm install --no-audit --no-fund
-
-echo "==> 3/6 Build aset frontend"
-npm run build
-
-echo "==> 4/6 Hapus sisa dev-server (kalau ada)"
+echo "==> 2/4 Hapus sisa dev-server (kalau ada)"
 rm -f public/hot
 
-echo "==> 5/6 Migrasi database"
+echo "==> 3/4 Migrasi database"
 php artisan migrate --force
 
-echo "==> 6/6 Bersihkan cache"
+echo "==> 4/4 Bersihkan cache"
 php artisan optimize:clear
 
 echo ""

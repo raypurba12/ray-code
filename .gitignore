@@ -13,7 +13,7 @@
 /.zed
 /auth.json
 /node_modules
-/public/build
+# /public/build  # DI-TRACK: hosting tanpa node — build dikomit agar cron tinggal git pull
 /public/build.zip
 /public/build.rar
 /public/hot
