@@ -191,16 +191,16 @@ export default function ServicesIndex({ services, jokiServices, jokiHeader, acti
                             const isHighlighted = service.slug === 'bikin-aplikasi-mobile' || title.toLowerCase().includes('mobile') || i===2; // border blue like ap.png 3rd card
                             return (
 <Reveal key={service.slug} delay={(i % 4) * 40}>
-                                <div className={`service-card-hover flex h-full flex-col rounded-2xl border bg-white p-6 shadow-sm ${isHighlighted ? 'border-blue-400 ring-1 ring-blue-100 shadow-[0_12px_32px_-12px_rgb(37_99_235/0.2)]' : 'border-slate-200'}`}>
-                                        <span className="flex size-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                                <div className={`service-card-hover flex h-full flex-col rounded-2xl border bg-card p-6 shadow-sm ${isHighlighted ? 'border-blue-400 ring-1 ring-blue-100 shadow-[0_12px_32px_-12px_rgb(37_99_235/0.2)] dark:border-brand-500/50 dark:ring-brand-500/20 dark:shadow-[0_12px_32px_-12px_rgb(37_99_235/0.45)]' : 'border-line'}`}>
+                                        <span className="flex size-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
                                             {service.logo ? <img src={service.logo} alt={title} className="size-7 object-contain" loading="lazy" onError={e=>((e.currentTarget as HTMLImageElement).style.display='none')} /> : <Icon className="size-5" aria-hidden />}
                                         </span>
-                                        <h3 className={`mt-4 text-[15px] font-extrabold leading-tight ${isHighlighted ? 'text-blue-600' : 'text-slate-900'}`}>{title}</h3>
-                                        <p className="mt-2 min-h-[56px] flex-1 text-[13px] leading-[1.5] text-slate-500 line-clamp-3">{desc}</p>
-                                        <div className="mt-6 border-t border-slate-200 pt-4">
-                                            <p className="text-[11px] tracking-widest text-slate-400 uppercase">Start From</p>
-                                            <p className="mt-1 text-[28px] font-black leading-none tracking-tight text-slate-900">{priceLabel}</p>
-                                            <a href={waHrefPkg} target="_blank" rel="noreferrer" className="mt-4 flex w-full items-center justify-center gap-2 rounded-full border border-blue-600 bg-white px-4 py-2.5 text-sm font-semibold text-blue-600 hover:bg-blue-50">
+                                        <h3 className={`mt-4 text-[15px] font-extrabold leading-tight ${isHighlighted ? 'text-blue-600 dark:text-blue-400' : 'text-ink'}`}>{title}</h3>
+                                        <p className="mt-2 min-h-[56px] flex-1 text-[13px] leading-[1.5] text-ink-3 line-clamp-3">{desc}</p>
+                                        <div className="mt-6 border-t border-line pt-4">
+                                            <p className="text-[11px] tracking-widest text-ink-4 uppercase">Start From</p>
+                                            <p className="mt-1 text-[28px] font-black leading-none tracking-tight text-ink">{priceLabel}</p>
+                                            <a href={waHrefPkg} target="_blank" rel="noreferrer" className="mt-4 flex w-full items-center justify-center gap-2 rounded-full border border-blue-600 bg-white px-4 py-2.5 text-sm font-semibold text-blue-600 hover:bg-blue-50 dark:border-blue-500 dark:bg-transparent dark:text-blue-300 dark:hover:bg-blue-500/10">
                                                 <svg viewBox="0 0 24 24" className="size-4 fill-[#25D366]" aria-hidden><path d="M12.04 2a9.9 9.9 0 0 0-8.4 15.2L2 22l4.9-1.6A9.9 9.9 0 1 0 12.04 2Zm0 18.1a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-2.9 1 1-2.9-.2-.3a8.2 8.2 0 1 1 6.6 3.6Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1-.2.2-.6.8-.8 1-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4 0-.5.2-.7l.4-.5c.1-.2.1-.3 0-.5l-.8-1.9c-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.2.3-.9.9-.9 2.2s.9 2.5 1.1 2.7c.1.2 1.8 2.8 4.4 3.9.6.3 1.1.4 1.5.6.6.2 1.2.2 1.6.1.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3Z"/></svg>
                                                 Konsultasi Gratis
                                             </a>

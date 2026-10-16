@@ -17,7 +17,12 @@ type PortfolioRow = Omit<PortfolioItem, 'description' | 'tech_stack'> & {
 };
 
 interface Props extends PageProps {
-    portfolios: PortfolioRow[];
+    portfolios: {
+        data: PortfolioRow[];
+        current_page: number;
+        last_page: number;
+        total: number;
+    };
 }
 
 const emptyForm = {
@@ -189,8 +194,10 @@ export default function AdminPortfolios({ portfolios }: Props) {
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
+        const hasUploadFiles = Boolean(data.thumbnail_file) || Boolean(data.video_file) || data.gallery_files.length > 0;
         // pakai transform yang benar — terima data param biar tidak stale
         transform((current) => ({
+            ...(editing && hasUploadFiles ? { _method: 'put' } : {}),
             title: current.title,
             category: current.category,
             client_name: current.client_name,
@@ -235,9 +242,15 @@ export default function AdminPortfolios({ portfolios }: Props) {
             },
         } as unknown as Record<string, unknown>;
 
-        // Inertia otomatis pakai FormData kalau ada File — tidak perlu forceFormData
+        // Inertia otomatis pakai FormData kalau ada File — tidak perlu forceFormData.
+        // PHP tidak mem-parsing body multipart untuk PUT asli, jadi saat edit + ada file
+        // pakai POST dengan spoof _method (sudah dimasukkan via transform di atas).
         if (editing) {
-            put(R.adminPortfoliosUpdate(editing.id), opts as never);
+            if (hasUploadFiles) {
+                post(R.adminPortfoliosUpdate(editing.id), opts as never);
+            } else {
+                put(R.adminPortfoliosUpdate(editing.id), opts as never);
+            }
         } else {
             post(R.adminPortfoliosStore, opts as never);
         }
@@ -257,7 +270,7 @@ export default function AdminPortfolios({ portfolios }: Props) {
     return (
         <AdminLayout title="Portofolio" description="Kelola studi kasus yang tampil di homepage">
             <div className="mb-6 flex items-center justify-between">
-                <p className="text-sm text-slate-500 dark:text-slate-400">{portfolios.length} studi kasus terpublikasi</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">{portfolios.total} studi kasus terpublikasi</p>
                 <Button size="sm" onClick={openCreate}>
                     <Plus className="size-4" />
                     Tambah studi kasus
@@ -265,7 +278,7 @@ export default function AdminPortfolios({ portfolios }: Props) {
             </div>
 
             <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                {portfolios.map((item, i) => (
+                {portfolios.data.map((item, i) => (
                     <Reveal key={item.id} delay={(i % 3) * 70}>
                         <Card className="flex h-full flex-col overflow-hidden">
                             <div className="relative h-36 overflow-hidden bg-slate-100 dark:bg-slate-800">
@@ -321,7 +334,7 @@ export default function AdminPortfolios({ portfolios }: Props) {
                 ))}
             </div>
 
-            {portfolios.length === 0 && (
+            {portfolios.data.length === 0 && (
                 <Card className="mt-6 p-12 text-center">
                     <p className="text-sm text-slate-500 dark:text-slate-400">Belum ada studi kasus. Tambah studi kasus pertama untuk tampil di homepage.</p>
                 </Card>
