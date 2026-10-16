@@ -267,6 +267,22 @@ Template entri:
 
 ---
 
+### Follow-up 10 (sesi yang sama) — Deploy ke hosting raycode.my.id + fix halaman putih + script deploy satu perintah
+
+- **Klarifikasi domain (VERIFIED via fetch eksternal):** situs ray-code live di `https://raycode.my.id` (title "Raycode — Studio Pengembangan Web"). `https://raypurba.my.id` adalah aplikasi **portfolio-laravel** (John Doe, Laravel Breeze) — proyek berbeda, jangan disamakan.
+- **Divergence branch:** `origin/main` = `40180ec` (merge PR #1 `b7ad6da` + PR #2 `40180ec` dari feature). `main` bukan ancestor feature → `git pull origin feature/...` di branch main gagal (divergent). Solusi: di server `git stash` → `git checkout feature/admin-improvements-phase-2` → `git pull`.
+- **Halaman putih + "build tidak cocok":** saat kejadian, manifest live (`app-B2Xl5R0S.js`) ≠ build lokal (`app-wvz0w5UM.js`) — karena ada **dua sumber build** (Windows vs `npm run build` di server). Pelajaran: `manifest.json` + folder `assets/` wajib dari **satu build yang sama**; jangan campur. User memulihkan dengan copy build lamanya (situs kembali normal; verifikasi eksternal: semua route 200, semua asset 200, halaman login tanpa string `admin@raycode.dev`).
+- **Fix keamanan terpisah (commit `b73d792`):** kotak kredensial demo (`admin@raycode.dev / password` dan `client@raycode.dev / password`) dihapus dari `resources/js/Pages/Auth/Login.tsx` + build ulang. **Reminder: ganti password admin production bila masih `password`.**
+- **Script deploy (commit `f538e4d`):** `deploy.sh` di root repo — `git pull --ff-only` → `npm install` → `npm run build` → `rm -f public/hot` → `php artisan migrate --force` → `php artisan optimize:clear`. Jalur deploy yang dipilih: **build di server** (menghindari mismatch hash Windows vs Linux dan upload manual zip). `.gitattributes` sudah `* text=auto eol=lf` sehingga `deploy.sh` LF.
+- **Cara pakai di hosting:** `cd ~/ray-code && bash deploy.sh` (setelah checkout branch deploy). Pengembangan berikutnya: push/merge di GitHub → SSH → `bash deploy.sh`.
+- **Auto-deploy (workflow `0c2b1ed+`):** `.github/workflows/deploy.yml` — GitHub Actions `appleboy/ssh-action` menjalankan `bash deploy.sh` di `~/ray-code` setiap push ke `main` / `feature/admin-improvements-phase-2` + tombol `workflow_dispatch`. Butuh 4 repo secrets: `SSH_HOST`, `SSH_USER`, `SSH_PORT`, `SSH_PRIVATE_KEY` (key ed25519 dari server, pubkey di `~/.ssh/authorized_keys`). Belum aktif sampai secrets diisi user.
+- **Unresolved:**
+  - Server saat ini di branch `feature/admin-improvements-phase-2`; disarankan PR feature → main lalu pindahkan server ke `main` agar alur deploy seragam (sekali setup, belum dikerjakan).
+  - Jalankan `bash deploy.sh` sekali di server agar build live konsisten dengan kode terbaru (saat ini user masih memakai build lama yang disimpan).
+  - Verifikasi manual browser di raycode.my.id: upload foto admin → timeline pantau, tombol bayar, countdown/salin.
+
+---
+
 ## 2026-10-13 — Admin Improvements Phase 1 Selesai: ConfirmModal, Toast, Breadcrumbs, HelpTooltip, Required Asterisk & Bulk Actions
 
 - **Fokus:** Menyelesaikan 100% item Phase 1 (Quick Wins) dari `docs/PRD_Admin_Improvements.md`.
