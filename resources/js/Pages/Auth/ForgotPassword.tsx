@@ -63,9 +63,6 @@ export default function ForgotPassword() {
                                 Kembali masuk →
                             </Link>
                         </p>
-                        <p className="mt-2 text-center text-xs text-ink-4">
-                            Belum punya akun? <Link href={R.register} className="font-semibold text-brand-600 hover:underline">Daftar</Link>
-                        </p>
                     </div>
                 </Reveal>
 

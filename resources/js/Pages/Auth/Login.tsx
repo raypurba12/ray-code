@@ -80,13 +80,6 @@ export default function Login() {
                                 {!processing && <ArrowRight className="size-4" />}
                             </Button>
                         </form>
-
-                        <p className="mt-8 text-center text-sm text-ink-3">
-                            Baru di sini?{' '}
-                            <a href={R.register} className="font-semibold text-brand-600 hover:text-brand-700">
-                                Buat akun gratis →
-                            </a>
-                        </p>
                     </div>
                 </Reveal>
 

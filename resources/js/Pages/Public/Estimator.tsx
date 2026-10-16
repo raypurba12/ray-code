@@ -49,7 +49,7 @@ export default function Estimator({ services, complexities: propComplexities, fe
     const urgencies = propUrgencies?.length ? propUrgencies : defaultUrgencies;
 
     const user = usePage<{ auth: { user: { role: string } | null } }>().props.auth.user;
-    const orderHref = user ? R.clientOrder : R.login;
+    const orderHref = user ? R.clientOrder : R.caraPesan;
 
     const [serviceId, setServiceId] = useState<number>(services[0]?.id ?? 0);
     const [complexity, setComplexity] = useState<string>(complexities[0]?.id ?? 'simple');

@@ -193,20 +193,13 @@ function Navbar({ user }: { user: User | null }) {
                 <div className="hidden items-center gap-3 lg:flex">
                     <LanguageSwitcher />
                     <ThemeToggle />
-                    {user ? (
+                    {user && (
                         <>
                             <ButtonLink href={user.role === 'admin' ? R.adminDashboard : R.clientDashboard} variant="secondary" size="sm">
                                 {t('nav.dashboard')}
                             </ButtonLink>
                             <AvatarChip user={user} />
                         </>
-                    ) : (
-                        <Link
-                            href={R.login}
-                            className="px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
-                        >
-                            {t('nav.login')}
-                        </Link>
                     )}
                 </div>
 
@@ -327,14 +320,9 @@ function Navbar({ user }: { user: User | null }) {
                                     {t('nav.goToDashboard')}
                                 </ButtonLink>
                             ) : (
-                                <>
-                                    <ButtonLink href={R.login} variant="secondary" className="flex-1" size="sm">
-                                        {t('nav.login')}
-                                    </ButtonLink>
-                                    <ButtonLink href={R.contact} className="flex-1" size="sm">
-                                        {t('nav.contact')}
-                                    </ButtonLink>
-                                </>
+                                <ButtonLink href={R.contact} className="flex-1" size="sm">
+                                    {t('nav.contact')}
+                                </ButtonLink>
                             )}
                         </div>
                     </nav>
