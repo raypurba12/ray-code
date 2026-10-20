@@ -192,7 +192,10 @@ body {
 /* ── Scroll reveal (IntersectionObserver driven, compositor-friendly) ──
     SSR-safe: content is fully visible in server HTML. The hidden state only
     applies once JS is running (html.js-reveal), so LCP never waits on JS.
-    Enhanced: subtle scale + refined expo ease, no layout shift. */
+    Enhanced: subtle scale + refined expo ease, no layout shift.
+    NOTE: no `will-change` here — it created one composited layer per revealed
+    node, which exhausts layer memory on mobile GPUs. The JS engine also adds
+    a scroll fallback + watchdog, so `.reveal` can never stay hidden forever. */
 html.js-reveal .reveal {
     opacity: 0;
     transform: translateY(28px) scale(0.97);
@@ -200,13 +203,11 @@ html.js-reveal .reveal {
         opacity 0.85s cubic-bezier(0.22, 1, 0.36, 1),
         transform 0.85s cubic-bezier(0.22, 1, 0.36, 1);
     transition-delay: var(--reveal-delay, 0ms);
-    will-change: opacity, transform;
 }
 
 html.js-reveal .reveal.is-visible {
     opacity: 1;
-    transform: translateY(0) scale(1);
-    will-change: auto;
+    transform: none;
 }
 
 html.js-reveal .reveal-left {
@@ -217,7 +218,7 @@ html.js-reveal .reveal-right {
 }
 html.js-reveal .reveal-left.is-visible,
 html.js-reveal .reveal-right.is-visible {
-    transform: translateX(0) scale(1);
+    transform: none;
 }
 
 /* ── Elegant micro-motion utilities (transform/opacity only) ── */
@@ -230,7 +231,8 @@ html.js-reveal .reveal-right.is-visible {
             background-color 0.3s ease;
         will-change: transform;
     }
-    .hover-lift:hover {
+    .hover-lift:hover,
+    .hover-lift:active {
         transform: translateY(-6px);
     }
     .spotlight-card {
@@ -248,7 +250,8 @@ html.js-reveal .reveal-right.is-visible {
         transition: opacity 0.35s ease;
         pointer-events: none;
     }
-    .spotlight-card:hover::before {
+    .spotlight-card:hover::before,
+    .spotlight-card.is-lit::before {
         opacity: 1;
     }
     :is(.dark .spotlight-card)::before {
@@ -327,7 +330,10 @@ html.js-reveal .reveal-right.is-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .reveal {
+    /* Konten tidak boleh tersembunyi: reveal selalu tampil, tanpa gerakan. */
+    html.js-reveal .reveal,
+    html.js-reveal .reveal-left,
+    html.js-reveal .reveal-right {
         opacity: 1 !important;
         transform: none !important;
         transition: none !important;
@@ -338,12 +344,24 @@ html.js-reveal .reveal-right.is-visible {
     .block-reveal-box {
         display: none !important;
     }
-    *,
-    *::before,
-    *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
+    .process-line {
+        transform: scaleX(1) !important;
+    }
+    /* Loop dekoratif (marquee, float, pulse, ping, blink, shimmer) berhenti,
+       tetapi hanya elemen ber-utility `animate-*` yang tersentuh — bukan `*`. */
+    [class*='animate-'] {
+        animation: none !important;
+    }
+    html {
         scroll-behavior: auto !important;
+    }
+    .hover-lift,
+    .sheen,
+    .spotlight-card,
+    .magnetic-btn,
+    .block-reveal-box,
+    .block-reveal-text {
+        transition: none !important;
     }
 }
 
@@ -391,13 +409,15 @@ html.js-reveal .reveal-right.is-visible {
 /* ── Service card hover: blue fill bottom→top (scaleY) + glow border ──
    ::before sebagai layer fill (transform compositor-friendly, bukan clip-path).
    Konten di atas layer (z-index 1). Teks/ikon flip putih mengikuti durasi fill
-   agar kontras di light & dark. Mendukung :hover, :focus-visible,
-   :has(:focus-visible) (kartu non-focusable dengan CTA di dalamnya),
-   dan prefers-reduced-motion. */
+   agar kontras di light & dark. State mencakup :hover (desktop), :focus-visible
+   & :focus-within (keyboard), :active dan `.is-touch` (tap di layar sentuh —
+   kelas ditambahkan sesaat oleh initTouchFeedback di app.tsx), serta
+   prefers-reduced-motion. */
 
 :is(.service-card-hover, .service-card-hover-light) {
     position: relative;
     overflow: hidden;
+    touch-action: manipulation;
     transition: border-color 300ms ease, box-shadow 300ms ease;
 }
 
@@ -414,11 +434,11 @@ html.js-reveal .reveal-right.is-visible {
     pointer-events: none;
 }
 
-:is(.service-card-hover, .service-card-hover-light):is(:hover, :focus-visible, :has(:focus-visible))::before {
+:is(.service-card-hover, .service-card-hover-light):is(:hover, :focus-visible, :focus-within, :active, .is-touch)::before {
     transform: scaleY(1);
 }
 
-:is(.service-card-hover, .service-card-hover-light):is(:hover, :focus-visible, :has(:focus-visible)) {
+:is(.service-card-hover, .service-card-hover-light):is(:hover, :focus-visible, :focus-within, :active, .is-touch) {
     border-color: var(--color-brand-400);
     box-shadow:
         0 0 0 1px var(--color-brand-400),
@@ -431,27 +451,27 @@ html.js-reveal .reveal-right.is-visible {
 }
 
 /* Teks & ikon putih saat fill aktif — kontras baik di kedua mode */
-:is(.service-card-hover, .service-card-hover-light):is(:hover, :focus-visible, :has(:focus-visible)),
-:is(.service-card-hover, .service-card-hover-light):is(:hover, :focus-visible, :has(:focus-visible)) * {
+:is(.service-card-hover, .service-card-hover-light):is(:hover, :focus-visible, :focus-within, :active, .is-touch),
+:is(.service-card-hover, .service-card-hover-light):is(:hover, :focus-visible, :focus-within, :active, .is-touch) * {
     color: #fff !important;
 }
 
 /* Teks sekunder sedikit diredupkan agar hierarki tetap terbaca */
-:is(.service-card-hover, .service-card-hover-light):is(:hover, :focus-visible, :has(:focus-visible)) :is(.text-ink-2, .text-ink-3, .text-ink-4, .text-slate-400, .text-slate-500, .text-slate-600) {
+:is(.service-card-hover, .service-card-hover-light):is(:hover, :focus-visible, :focus-within, :active, .is-touch) :is(.text-ink-2, .text-ink-3, .text-ink-4, .text-slate-400, .text-slate-500, .text-slate-600) {
     color: rgb(255 255 255 / 0.85) !important;
 }
 
-:is(.service-card-hover, .service-card-hover-light):is(:hover, :focus-visible, :has(:focus-visible)) .text-emerald-500 {
+:is(.service-card-hover, .service-card-hover-light):is(:hover, :focus-visible, :focus-within, :active, .is-touch) .text-emerald-500 {
     color: #6ee7b7 !important;
 }
 
 /* Chip ikon / tombol: kaca transparan agar menyatu dengan fill biru */
-:is(.service-card-hover, .service-card-hover-light):is(:hover, :focus-visible, :has(:focus-visible)) :is([class*="bg-white"], [class*="bg-blue-50"], [class*="bg-blue-100"], [class*="bg-brand-50"], [class*="bg-brand-100"]) {
+:is(.service-card-hover, .service-card-hover-light):is(:hover, :focus-visible, :focus-within, :active, .is-touch) :is([class*="bg-white"], [class*="bg-blue-50"], [class*="bg-blue-100"], [class*="bg-brand-50"], [class*="bg-brand-100"]) {
     background-color: rgb(255 255 255 / 0.14) !important;
     border-color: rgb(255 255 255 / 0.35) !important;
 }
 
-:is(.service-card-hover, .service-card-hover-light):is(:hover, :focus-visible, :has(:focus-visible)) [class*="ring-1"] {
+:is(.service-card-hover, .service-card-hover-light):is(:hover, :focus-visible, :focus-within, :active, .is-touch) [class*="ring-1"] {
     box-shadow: none !important;
 }
 
@@ -466,7 +486,7 @@ html.js-reveal .reveal-right.is-visible {
 }
 
 /* Focus ring tetap terbaca saat fill biru aktif */
-:is(.service-card-hover, .service-card-hover-light):is(:hover, :focus-visible, :has(:focus-visible)) :focus-visible {
+:is(.service-card-hover, .service-card-hover-light):is(:hover, :focus-visible, :focus-within, :active, .is-touch) :focus-visible {
     outline-color: #fff;
 }
 

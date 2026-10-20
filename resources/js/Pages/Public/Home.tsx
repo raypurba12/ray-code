@@ -183,13 +183,12 @@ export default function Home({
         const onMove = (e: MouseEvent) => {
             const target = (e.target as HTMLElement)?.closest?.('.spotlight-card') as HTMLElement | null;
             if (!target) return;
-            const r = target.getBoundingClientRect();
-            const x = ((e.clientX - r.left) / r.width) * 100;
-            const y = ((e.clientY - r.top) / r.height) * 100;
+            const { clientX, clientY } = e;
             cancelAnimationFrame(raf);
             raf = requestAnimationFrame(() => {
-                target.style.setProperty('--mx', `${x}%`);
-                target.style.setProperty('--my', `${y}%`);
+                const r = target.getBoundingClientRect();
+                target.style.setProperty('--mx', `${((clientX - r.left) / r.width) * 100}%`);
+                target.style.setProperty('--my', `${((clientY - r.top) / r.height) * 100}%`);
             });
         };
         document.addEventListener('mousemove', onMove, { passive: true });
@@ -242,32 +241,29 @@ function Hero({ h }: { h: HomepageData }) {
         const ctaWrap = ctaWrapRef.current;
         const ctaBtn = ctaBtnRef.current;
         let rafSpot = 0;
-        let mx = 52, my = 28;
 
         const onHeroMove = (e: MouseEvent) => {
             if (!hero) return;
-            const r = hero.getBoundingClientRect();
-            mx = ((e.clientX - r.left) / r.width) * 100;
-            my = ((e.clientY - r.top) / r.height) * 100;
-            if (rafSpot) return;
+            const { clientX, clientY } = e;
+            cancelAnimationFrame(rafSpot);
             rafSpot = requestAnimationFrame(() => {
-                hero.style.setProperty('--mx', `${mx}%`);
-                hero.style.setProperty('--my', `${my}%`);
-                rafSpot = 0;
+                const r = hero.getBoundingClientRect();
+                hero.style.setProperty('--mx', `${((clientX - r.left) / r.width) * 100}%`);
+                hero.style.setProperty('--my', `${((clientY - r.top) / r.height) * 100}%`);
             });
         };
 
         let rafMag = 0;
         const onCtaMove = (e: MouseEvent) => {
             if (!ctaWrap || !ctaBtn) return;
-            const r = ctaWrap.getBoundingClientRect();
-            const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-            const dx = (e.clientX - cx) * 0.22;
-            const dy = (e.clientY - cy) * 0.28;
-            const dist = Math.hypot(e.clientX - cx, e.clientY - cy);
-            const active = dist < 240;
+            const { clientX, clientY } = e;
             cancelAnimationFrame(rafMag);
             rafMag = requestAnimationFrame(() => {
+                const r = ctaWrap.getBoundingClientRect();
+                const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+                const dx = (clientX - cx) * 0.22;
+                const dy = (clientY - cy) * 0.28;
+                const active = Math.hypot(clientX - cx, clientY - cy) < 240;
                 ctaBtn.style.transform = active ? `translate3d(${dx}px, ${dy}px, 0)` : 'translate3d(0,0,0)';
             });
         };
@@ -516,11 +512,12 @@ function StudioShowcase({ h }: { h: HomepageData }) {
         if (!el) return;
         let raf = 0;
         const onMove = (e: MouseEvent) => {
-            const r = el.getBoundingClientRect();
-            const x = (e.clientX - r.left) / r.width - 0.5;
-            const y = (e.clientY - r.top) / r.height - 0.5;
+            const { clientX, clientY } = e;
             cancelAnimationFrame(raf);
             raf = requestAnimationFrame(() => {
+                const r = el.getBoundingClientRect();
+                const x = (clientX - r.left) / r.width - 0.5;
+                const y = (clientY - r.top) / r.height - 0.5;
                 el.style.transform = `perspective(1000px) rotateY(${x * 6}deg) rotateX(${-y * 6}deg)`;
             });
         };
@@ -896,28 +893,8 @@ function ServicesSection({ services, eyebrow, heading, ctaLabel }: { services: S
 }
 
 function ServiceCard({ service, index }: { service: Service; index: number }) {
-    const ref = useRef<HTMLAnchorElement>(null);
-    useEffect(() => {
-        if (typeof window === 'undefined' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-        const el = ref.current;
-        if (!el) return;
-        let raf = 0;
-        const onMove = (e: MouseEvent) => {
-            const r = el.getBoundingClientRect();
-            const x = ((e.clientX - r.left) / r.width) * 100;
-            const y = ((e.clientY - r.top) / r.height) * 100;
-            cancelAnimationFrame(raf);
-            raf = requestAnimationFrame(() => {
-                el.style.setProperty('--mx', `${x}%`);
-                el.style.setProperty('--my', `${y}%`);
-            });
-        };
-        el.addEventListener('mousemove', onMove, { passive: true });
-        return () => { cancelAnimationFrame(raf); el.removeEventListener('mousemove', onMove); };
-    }, []);
     return (
         <a
-            ref={ref}
             href={R.servicesShow(service.slug)}
             className="spotlight-card sheen hover-lift group relative flex h-full flex-col rounded-2xl border border-line bg-card p-7 shadow-[0_1px_3px_rgb(15_23_42/0.04)] hover:-translate-y-1.5 hover:border-brand-200 hover:shadow-[0_20px_44px_-18px_rgb(37_99_235/0.22)] dark:border-white/[0.08] dark:bg-card dark:shadow-[inset_0_1px_0_rgb(255_255_255/0.03)] dark:hover:border-brand-500/40 dark:hover:bg-elev dark:hover:shadow-[inset_0_1px_0_rgb(255_255_255/0.04),0_20px_48px_-20px_rgb(37_99_235/0.35)]"
         >
@@ -1032,31 +1009,12 @@ function WorkSection({ portfolios, eyebrow, heading, ctaLabel }: { portfolios: P
 }
 
 function WorkCard({ item, large = false, compact = false }: { item: PortfolioItem; large?: boolean; compact?: boolean }) {
-    const ref = useRef<HTMLAnchorElement>(null);
     const [hovered, setHovered] = useState(false);
     const isBeforeAfter = !compact && ['fintava-finance-dashboard', 'tokobiru-migration-rescue', 'waroeng-kita-pos-system'].includes(item.slug);
-    useEffect(() => {
-        if (typeof window === 'undefined' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-        const el = ref.current;
-        if (!el) return;
-        let raf = 0;
-        const onMove = (e: MouseEvent) => {
-            const r = el.getBoundingClientRect();
-            const x = ((e.clientX - r.left) / r.width) * 100;
-            const y = ((e.clientY - r.top) / r.height) * 100;
-            cancelAnimationFrame(raf);
-            raf = requestAnimationFrame(() => {
-                el.style.setProperty('--mx', `${x}%`);
-                el.style.setProperty('--my', `${y}%`);
-            });
-        };
-        el.addEventListener('mousemove', onMove, { passive: true });
-        return () => { cancelAnimationFrame(raf); el.removeEventListener('mousemove', onMove); };
-    }, []);
     return (
         <a
-            ref={ref}
             href={R.portfolioShow(item.slug)}
+            onDragStart={(e) => e.preventDefault()}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
             onFocus={() => setHovered(true)}
@@ -1143,30 +1101,42 @@ function WorkMedia({ item, large, compact, hovered }: { item: PortfolioItem; lar
 function BeforeAfterSlider({ item, hovered, large }: { item: PortfolioItem; hovered?: boolean; large?: boolean }) {
     const [pos, setPos] = useState(52);
     const dragging = useRef(false);
+    const moved = useRef(false);
+    const startX = useRef(0);
     const containerRef = useRef<HTMLDivElement>(null);
+    const rectRef = useRef<DOMRect | null>(null);
     const isFintava = item.slug === 'fintava-finance-dashboard';
     const isWaroeng = item.slug === 'waroeng-kita-pos-system';
     const before = isFintava ? { label: 'Before', metric: '8.0s', sub: 'TTFB · 45', color: 'from-slate-700 via-slate-800 to-slate-900' } : isWaroeng ? { label: 'Before', metric: '3.2s', sub: 'Manual · error', color: 'from-amber-900/80 via-slate-800 to-slate-900' } : { label: 'Before', metric: '8.0s', sub: 'Legacy · 5s', color: 'from-slate-700 via-slate-800 to-slate-900' };
     const after = isFintava ? { label: 'After', metric: '1.2s', sub: '99 · real-time', color: 'from-brand-700 via-brand-600 to-[#0a1a4a]' } : isWaroeng ? { label: 'After', metric: '0.4s', sub: 'POS sync', color: 'from-emerald-700 via-brand-700 to-[#0a1a4a]' } : { label: 'After', metric: '1.2s', sub: '99 · fast', color: 'from-brand-700 via-brand-600 to-[#0a1a4a]' };
 
     const updatePos = (clientX: number) => {
-        const el = containerRef.current;
-        if (!el) return;
-        const r = el.getBoundingClientRect();
+        const r = rectRef.current ?? containerRef.current?.getBoundingClientRect();
+        if (!r) return;
         const x = Math.min(Math.max((clientX - r.left) / r.width, 0.08), 0.92);
         setPos(x * 100);
     };
+    const getClientX = (e: React.MouseEvent | React.TouchEvent): number | null => {
+        if ('touches' in e) return e.touches[0]?.clientX ?? null;
+        return e.clientX;
+    };
     const onDown = (e: React.MouseEvent | React.TouchEvent) => {
         dragging.current = true;
-        const cx = 'touches' in e ? (e as React.TouchEvent).touches[0].clientX : (e as React.MouseEvent).clientX;
+        moved.current = false;
+        const cx = getClientX(e);
+        if (cx == null) return;
+        startX.current = cx;
+        rectRef.current = containerRef.current?.getBoundingClientRect() ?? null;
         updatePos(cx);
     };
     const onMove = (e: React.MouseEvent | React.TouchEvent) => {
         if (!dragging.current) return;
-        const cx = 'touches' in e ? (e as React.TouchEvent).touches[0].clientX : (e as React.MouseEvent).clientX;
+        const cx = getClientX(e);
+        if (cx == null) return;
+        if (Math.abs(cx - startX.current) > 6) moved.current = true;
         updatePos(cx);
     };
-    const onUp = () => { dragging.current = false; };
+    const onUp = () => { dragging.current = false; rectRef.current = null; };
 
     useEffect(() => {
         if (!hovered) { const t = setTimeout(() => setPos(52), 800); return () => clearTimeout(t); }
@@ -1177,7 +1147,7 @@ function BeforeAfterSlider({ item, hovered, large }: { item: PortfolioItem; hove
     }, [hovered]);
 
     return (
-        <div ref={containerRef} className="absolute inset-0 select-none" onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp} onTouchStart={onDown} onTouchMove={onMove} onTouchEnd={onUp}>
+        <div ref={containerRef} className="absolute inset-0 touch-pan-y select-none" onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp} onTouchStart={onDown} onTouchMove={onMove} onTouchEnd={onUp} onClickCapture={(e) => { if (moved.current) { e.preventDefault(); e.stopPropagation(); moved.current = false; } }}>
             {/* Before */}
             <div className={cn('absolute inset-0 bg-gradient-to-br p-4', before.color)}>
                 <div className="pointer-events-none absolute inset-0 opacity-30 [background-image:radial-gradient(rgb(255_255_255/0.12)_1px,transparent_1px)] [background-size:16px_16px]" />

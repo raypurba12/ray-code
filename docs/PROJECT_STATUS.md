@@ -1,6 +1,6 @@
 # PROJECT_STATUS — Raycode Studio Platform
 
-> **Last Verified:** 2026-10-16 (UTC+7, sesi Blog Cover Upload, Fix `/admin/portfolios` blank, Login khusus admin, Hover fill card layanan, Audit + P0/P1 Pantau Pesanan: bayar per-invoice/noindex/unduh file/WA notif/histori foto/ringkasan/stepper/countdown/salin, Fix upload foto admin nested-form + meta csrf, Deploy batch ke GitHub)**  
+> **Last Verified:** 2026-10-17 (PERF A3 mousemove: `getBoundingClientRect` dipindah ke dalam rAF, hapus handler spotlight duplikat ServiceCard/WorkCard, cache rect drag Before/After, fix link-drag mouse via `onDragStart` di anchor — puppeteer 6/6, `php artisan test` 64 passed + 1 skipped) + 2026-10-16 (UTC+7, sesi Blog Cover Upload, Fix `/admin/portfolios` blank, Login khusus admin, Hover fill card layanan, Audit + P0/P1 Pantau Pesanan: bayar per-invoice/noindex/unduh file/WA notif/histori foto/ringkasan/stepper/countdown/salin, Fix upload foto admin nested-form + meta csrf, Deploy batch ke GitHub)**  
 > **Branch:** `feature/admin-improvements-phase-2` — HEAD `a26a02b` + docs/deploy commit (origin/main masih `6d5b1e7`; branch ini adalah jalur deploy)  
 > **Verified by:** 2026-10-16 — `php artisan test` 64 passed + 1 skipped (251 assertions) + `npm run build` OK + `pint --test` passed + emulasi upload HTTP nyata (lihat `docs/WORKLOG.md`; riwayat lama: inspeksi `npm run build` 1.106 MB/58 file + `public/images` 4,1 MB + `portfolio_videos` 5,2 MB + `vite.config.ts`)  
 > **Aturan:** Jangan anggap baris di dokumen ini benar jika bertanda `NEEDS RE-VERIFY` atau berumur >1 sesi tanpa cek ulang `Read`/`bash`.
@@ -203,7 +203,7 @@ Bukti: `public/images` hero-woman.jpeg 2.060 kB + pp.png 1.305 kB + hero-woman.p
 
 **Urutan setelah itu:**
 1. PERF A2 render-blocking font (`Inter 4 weight` + `snap.js sync` `app.blade.php:17,38` 910 ms) → `font-display swap` + `snap.js async` + `preconnect`
-2. PERF A3 forced reflow (`Home.tsx:186 getBoundingClientRect x6`) → `prefers-reduced-motion` guard + `will-change` + rAF throttle
+2. PERF A3 forced reflow (`Home.tsx:186 getBoundingClientRect x6`) → `prefers-reduced-motion` guard + `will-change` + rAF throttle — **✅ SELESAI 2026-10-17** (guard sudah ada; read dipindah ke dalam rAF; `will-change` `.reveal` dihapus 2026-10-16; handler duplikat dihapus; bukti di `docs/WORKLOG.md` 2026-10-17)
 3. PERF A4 unused JS 179 KiB (`vendor 318k + motion 127k`) → lazy `motion` per section
 4. P1-1 CI/CD — setelah perf stabil
 
@@ -261,7 +261,7 @@ Jika temuan audit lama bertentangan dengan kode yang kamu baca, **percaya kode**
 - `vendor 318k + motion 127k + Home 72k + app.css 180k` = **1.106 MB / 58 file** (gzip ~250k) — bukan 8 MB; 8 MB berasal dari **gambar/video**
 - `public/images`: hero-woman.jpeg 2.060k, pp.png 1.305k, hero-woman.png 503k (tidak dipakai, tapi ikut deploy, `.gitignore` ignore webp jadi fresh clone 404 fallback ke png), `pp-800.webp` 68k (dipakai `app.blade.php:15` preload + `Home.tsx:418` hero), `raycode-faq.webp` 147k, `storage/portfolio_videos` 5.212k mp4 (dipakai `Home.tsx:1117` `<video preload metadata>` 5 MB)
 - `app.blade.php:17` Inter 4 weight + `snap.js` sync (tanpa async) = render-blocking 910 ms, `vite.config.ts:29` split motion/icons sudah ada tapi `axios` 0k waste
-- `Home.tsx:186,249,263,517,904,1042,1153` `getBoundingClientRect` x6 di mousemove rAF — hanya spotlight ada `prefers-reduced-motion` guard, lainnya tidak → forced reflow
+- `Home.tsx:186,249,263,517,904,1042,1153` `getBoundingClientRect` x6 di mousemove rAF — hanya spotlight ada `prefers-reduced-motion` guard, lainnya tidak → forced reflow **(KOREKSI 2026-10-17: bagian "guard" TIDAK akurat — guard `prefers-reduced-motion` ternyata ada di 5 handler sejak initial commit `6d5b1e7`, diverifikasi `git log -S`; temuan forced reflow read tetap valid dan sudah diperbaiki 2026-10-17)**
 - Unused JS 179k = vendor/motion/icons eager di Home; Unused CSS Error = tool limitation (`@tailwindcss/vite` + `cssCodeSplit:true` bikin Lighthouse lama gagal parse, bukan app bug)
 
 **Temuan prioritas (dampak / risiko / biaya):**
@@ -269,12 +269,16 @@ Jika temuan audit lama bertentangan dengan kode yang kamu baca, **percaya kode**
 - **A7 video 5,2 MB preload metadata** — TINGGI, rendah, 10m — `preload none` + poster + lazy hover
 - **A5 image 345 KiB** (raycode-faq 147k tanpa srcset/width/height) — SEDANG, rendah, 15m
 - **A2 render-blocking 910 ms** (font + snap sync) — TINGGI, rendah, 10m
-- **A3 main-thread 13,9 s forced reflow** — TINGGI, sedang, 30m
+- **A3 main-thread 13,9 s forced reflow** — TINGGI, sedang, 30m — **✅ SELESAI 2026-10-17** (read `getBoundingClientRect` dipindah ke dalam rAF; handler duplikat ServiceCard/WorkCard dihapus; cache rect drag Before/After; fix link-drag mouse via `onDragStart` di anchor — bukti puppeteer 6/6 + build `Home-CYFWNef4.js` di `docs/WORKLOG.md` 2026-10-17)
 - **A4 unused JS 179k** — SEDANG, sedang, 20m
 - **A6 unused CSS Error** — RENDAH, tool, 0m (jangan fix app)
 
 **Yang sudah dikerjakan 2026-10-11:** `.gitignore:32` `public/images/*.webp` → allow webp (P1-4), `vite.config.ts:13` host fix + `public/hot` hapus (sebelumnya), audit bundle lengkap — **optimasi A1/A7/A2/A3 belum diterapkan**, desain/SEO/hover preview/Before-After/order dipertahankan, tidak tambah dependency.
 
-**Yang belum:** Semua optimasi A1-A5 masih pending, build before/after belum diukur ulang, Lighthouse belum re-run — jangan klaim naik sebelum ukur.
+**Yang sudah dikerjakan 2026-10-16 (sesi fix animasi mobile):** keluhan "animasi hilang di Chrome Android" diverifikasi & diperbaiki tanpa hapus animasi desktop — `app.tsx` reveal engine jadi fail-safe (fallback `scroll/resize/load/pageshow` + watchdog 2,5 s/6 s; bukti A/B emulasi IO rusak: live lama 42/42 stuck `opacity: 0` vs build baru 44/44 reveal), `initTouchFeedback()` untuk tap (`.is-touch`/`.is-lit`, `--mx/--my`), reduce-motion tidak lagi `* { animation: .01ms !important }` (sekarang `[class*='animate-']`) dan konten reveal selalu tampil, `will-change` dihapus dari `.reveal` (**bagian dari A3**), `useCountUp` fallback anti-stuck-"0", Before/After slider drag-guard (tidak navigasi saat drag). Build baru `app-MDCyzl_k.css` + `app-CSc8ShV5.js`; `php artisan test --compact` → 64 passed, 1 skipped (251 assertions); verifikasi puppeteer mobile normal/reduced/broken-IO + desktop 1440 lulus semua. **A1/A2/A4/A5/A7 tetap pending; sisa A3 (guard reduce-motion mousemove/magnetic) masih pending.** **(KOREKSI 2026-10-17: guard reduce-motion ternyata SUDAH ADA sejak initial commit — yang nyata sisa A3 adalah forced reflow read rect; diselesaikan 2026-10-17.)**
+
+**Yang sudah dikerjakan 2026-10-17 (sesi PERF A3):** forced reflow mousemove dieliminasi — `getBoundingClientRect` dipindah ke dalam callback rAF (maks 1 read/frame) di global spotlight, hero spotlight, magnetic CTA, dan tilt StudioShowcase; handler mousemove per-card `ServiceCard`/`WorkCard` dihapus (duplikat persis dengan handler global `.spotlight-card`); `BeforeAfterSlider` cache rect saat drag start (`rectRef`, 1 read/gestur); fix bug drag **mouse**: native link drag dari `<a>` card menelan `mousemove` → `onDragStart` preventDefault di anchor WorkCard (guard di container tidak menangkap, dibuktikan target `dragstart` = `A.spotlight-card`). Bukti: build `Home-CYFWNef4.js` 72.56 kB, `php artisan test --compact` → 64 passed + 1 skipped (251 assertions), puppeteer 6/6 (drag mouse 52% → 79.87% tanpa navigasi; spotlight/hero/magnetic/reduce-motion PASS). `pint --test` fail pre-existing di migrasi `2026_10_13_150740_*` (commit `bc8fca2`, tidak disentuh). **A1/A2/A4/A5/A7 tetap pending.**
+
+**Yang belum:** A3 (mousemove) selesai 2026-10-17; optimasi A1/A2/A4/A5/A7 masih pending, build before/after belum diukur ulang, Lighthouse belum re-run — jangan klaim naik sebelum ukur.
 
 *Template status:* `VERIFIED` → `IN PROGRESS` → `NOT STARTED` → `BLOCKED` → `NEEDS RE-VERIFY` → `DEPRECATED` (jangan hapus, tandai deprecated). Update hanya dengan bukti `file:line` atau output `bash`.

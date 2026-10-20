@@ -14,6 +14,80 @@ Template entri:
 
 ---
 
+## 2026-10-17 — PERF A3: baca rect di dalam rAF (hapus forced reflow mousemove) + fix drag mouse Before/After + koreksi catatan docs
+
+- **Fokus:** Menyelesaikan sisa PERF A3 (forced reflow `getBoundingClientRect` di handler `mousemove`, `Home.tsx:186,249,263,517,904,1042,1153`) + koreksi temuan usang di docs.
+- **Koreksi temuan usang (dibuktikan):** `git log -S "prefers-reduced-motion" -- resources/js/Pages/Public/Home.tsx` → **guard reduce-motion sudah ada sejak initial commit `6d5b1e7`** di 5 handler (Home/global spotlight, Hero spotlight, magnetic CTA, StudioShowcase, ServiceCard, WorkCard). Catatan "guard reduce-motion mousemove/magnetic masih pending" di WORKLOG 2026-10-16 (dan audit §10 "hanya spotlight ada guard") **tidak akurat** — sisa A3 yang nyata = `getBoundingClientRect()` dibaca **sinkron di setiap event mousemove** (di luar rAF), bukan guard-nya.
+- **File diubah (1 file sumber + build):**
+  - `resources/js/Pages/Public/Home.tsx`:
+    - Global spotlight (`Home`), hero spotlight + magnetic CTA (`Hero`), tilt `StudioShowcase`: `getBoundingClientRect()` dipindah **ke dalam callback rAF** (clientX/clientY di-capture saat event) → maksimum 1 read/frame, bukan per-event.
+    - `ServiceCard` & `WorkCard`: **hapus handler mousemove per-card + `ref`** — identik & duplikat dengan handler global `document` `.spotlight-card` (kedua kartu punya class `spotlight-card`) → -2 listener/kartu, -2 read duplikat/frame.
+    - `BeforeAfterSlider`: **cache rect saat drag start** (`rectRef` di `onDown`, dibersihkan di `onUp`) → 1 read per gestur, bukan per event drag.
+    - `WorkCard` `<a>`: tambah `onDragStart={(e) => e.preventDefault()}` — **fix drag mouse Before/After** (lihat temuan di bawah).
+  - `public/build/*` — rebuild (strategi repo: build di-track git). Home chunk final `Home-CYFWNef4.js 72.56 kB`.
+- **Temuan + fix bug (dibuktikan headless):** drag **mouse** pada Before/After slider sebelumnya memulai **native link drag** karena sumber drag = `<a>` card (bukan container slider). Bukti: `dragstart` target = `A.spotlight-card...`; tanpa pencegahan, event `mousemove` berhenti terkirim setelah 1 langkah (counter 2/21) dan posisi slider stuck. Guard `onDragStart` di container slider **tidak menangkap** (event target = ancestor `<a>`, bubble hanya ke atas) — guard harus di anchor. Setelah fix: semua `mousemove` mengalir (21/21), posisi `52% → 79.87%` (tepat `50% + 30%` dari rect cache), `path=/` (click-guard `onClickCapture` tetap bekerja).
+- **Keputusan:**
+  - Read di dalam rAF (bukan cache+invalidate scroll/resize) — pola standar, tidak ada risiko rect basi, tetap maks 1 forced layout/frame saat hover.
+  - Hapus handler per-card alih-alih men-throttle-nya — output identik (class + rumus sama), kerja lebih sedikit.
+  - `useCountUp.ts` dicek: read rect sudah di dalam rAF via `ticking` guard — **tidak diubah**.
+- **Perintah test + hasil aktual:**
+  ```powershell
+  npx tsc --noEmit                  # 0 error di Home.tsx (error lain pre-existing)
+  npm run build                     # ✓ 2889 modules, Home-CYFWNef4.js 72.56 kB (grep: onDragStart=1, touch-pan-y=1)
+  php artisan test --compact        # Tests: 1 skipped, 64 passed (251 assertions)
+  .\vendor\bin\pint --test          # fail HANYA database/migrations/2026_10_13_150740_... (pre-existing; commit bc8fca2; tidak disentuh sesi ini)
+  node verify-a3.js                 # puppeteer-core (temp di luar repo) via php artisan serve :8010 + Vite dev (public/hot aktif → menguji source):
+  #   PASS 4 drag mouse: 52% -> 79.8658% (path=/, dragSrc=A.spotlight-card...)
+  #   PASS 1 spotlight-card 29.8%/43.0%  | PASS 2 hero 60%/34.9% | PASS 3 magnetic translate3d(3.4px,2.7px,0px)
+  #   PASS 5 reduce-motion: 44 reveal, 0 hidden (js-reveal=false) | PASS 6 reduce spotlight skipped
+  #   Summary 6/6; JS errors 5 = pre-existing (duplicate key FAQ, ERR_NAME_NOT_RESOLVED, 403 resource eksternal/seed)
+  ```
+  Catatan lingkungan: build pertama OOM (`Fatal process out of memory`) saat Vite dev server user berjalan — retry dengan `$env:NODE_OPTIONS='--max-old-space-size=4096'` berhasil. Chrome headless butuh jeda antar aksi mouse (input batching) agar drag deterministik.
+- **Unresolved:**
+  - **Belum di-commit** — `Home.tsx` + `public/build` (build di-track git) siap commit; jangan lupa commit keduanya bersamaan sebelum push/deploy.
+  - Verifikasi headed-browser (mouse drag nyata) belum — headless sudah; touch drag sudah diverifikasi sesi sebelumnya.
+  - Console errors pre-existing saat load Home: duplicate key FAQ (kemungkinan data FAQ duplikat di DB dev), `ERR_NAME_NOT_RESOLVED`, satu resource 403 — kandidat sesi terpisah (bukan dari perubahan ini).
+  - A1/A2/A4/A5/A7 & pengukuran ulang Lighthouse tetap pending (jangan klaim kenaikan sebelum ukur).
+
+---
+
+## 2026-10-16 — Fix animasi hilang di Chrome Android (fail-safe reveal engine + tap feedback + reduce-motion)
+
+- **Laporan user:** di HP Android (Chrome) hampir semua animasi/efek visual tidak muncul, padahal di desktop tampil; website live `https://raycode.my.id`.
+- **Verifikasi awal (bash):** build live == build lokal saat itu (`app-kBe1XNWd.css` 188.222 B, `app-CIaU6Al-.js` 29.572 B, hash cocok dengan `public/build`) → bug ada di kode saat ini, bukan build lama.
+- **Akar masalah (analisis kode + uji empiris puppeteer-core, emulasi Pixel 5 393x851 touch dpr 2.75):**
+  1. `initRevealEngine` lama (`resources/js/app.tsx`) menambah `html.js-reveal` yang menyembunyikan semua `[data-reveal]` (`opacity: 0`, `app.css:199`) **tanpa fail-safe apa pun**. Jika callback IntersectionObserver tidak pernah dipanggil (throttling compositor Chrome Android, elemen di dalam `content-visibility: auto` `.cv-auto`, main-thread berat), semua konten reveal stuck `opacity: 0` selamanya. **Bukti A/B:** emulasi IO rusak di build lama (live) → **42/42 elemen tetap `opacity: 0` bahkan setelah scroll penuh**; di build baru → **44/44 reveal**.
+  2. Blok reduce-motion lama memakai selector global `*, *::before, *::after { animation-duration: .01ms !important }` → semua animasi dekoratif (marquee, float, pulse, ping) mati total di device dengan "Remove animations" aktif (umum di Android).
+  3. Efek yang hanya-hover (fill service card `:hover`, spotlight `mousemove`, magnetic, hover-lift) mustahil muncul di `hover: none` (layar sentuh).
+  4. `will-change: opacity, transform` di semua node `.reveal` (puluhan layer GPU) + `transform` permanen di `.is-visible`.
+- **File diubah:**
+  - `resources/js/app.tsx` — engine diperkuat: skip saat reduce-motion (konten langsung terlihat tanpa `js-reveal`), try/catch IO + `typeof` check, fallback `scroll`/`resize`/`load`/`pageshow` (rAF throttle) yang me-reveal elemen saat masuk viewport tanpa bergantung IO, watchdog 2,5 s (reveal yang sudah di viewport) + 6 s (reveal semua bila engine 0 hasil), MutationObserver & `inertia:navigate` dipertahankan. Tambah `initTouchFeedback()`: pada `pointerdown` touch → kelas `.is-touch` (900 ms) untuk service card + set `--mx/--my` + `.is-lit` untuk `.spotlight-card`.
+  - `resources/css/app.css` — hapus `will-change` dari `.reveal`; `.reveal.is-visible` → `transform: none`; blok reduce di-scope ke `[class*='animate-']` (bukan `*`) + `.reveal`/`.block-reveal-text` selalu `opacity: 1 !important`, `process-line` statis `scaleX(1)`, `scroll-behavior: auto`; service card state jadi `:is(:hover, :focus-visible, :focus-within, :active, .is-touch)` (+ `touch-action: manipulation`; `:has(:focus-visible)` diganti `:focus-within` agar lebih kompatibel); `.spotlight-card.is-lit::before { opacity: 1 }`; `.hover-lift:active`.
+  - `resources/js/hooks/useCountUp.ts` — fallback scroll/resize (rAF) + watchdog 2,6 s agar angka statistik hero tidak stuck "0" bila IO tidak pernah fire.
+  - `resources/js/Pages/Public/Home.tsx` — Before/After slider: `touch-pan-y`, guard `touches[0]?.clientX`, deteksi drag >6px + `onClickCapture` preventDefault/stopPropagation → drag horizontal tidak lagi memicu navigasi kartu (bug yang sama juga terjadi saat drag-then-release di desktop).
+- **Keputusan:** observer dianggap enhancement, bukan satu-satunya jalur konten tampil (progressive enhancement, SSR tetap terlihat); reduce-motion = kurangi gerak dekoratif, BUKAN sembunyikan konten; hover-only → tap feedback via kelas sekali-pakai tanpa hijack navigasi; tidak menambah dependency; animasi premium desktop tidak dihapus.
+- **Perintah test + hasil aktual:**
+  ```powershell
+  npm run build      # ✓ 2889 modules — app-MDCyzl_k.css 188.81 kB, app-CSc8ShV5.js 30.97 kB (pengganti app-kBe1XNWd.css/app-CIaU6Al-.js)
+  npx tsc --noEmit   # hanya error pre-existing di file yang TIDAK disentuh (AdminBreadcrumb, ConfirmModal, ToastProvider, ui.tsx, Admin/Orders) — 0 error baru
+  php artisan test --compact   # Tests: 1 skipped, 64 passed (251 assertions) Duration: 39.16s
+  node test-fixes.js (puppeteer, php artisan serve :8000, emulasi mobile)
+    # A  local + IO dibroken  → early 6/44 visible → setelah scroll 44/44, opacityZero 0 (fail-safe bekerja)
+    # A2 live + IO dibroken   → 42/42 tetap opacity 0 setelah scroll (BUKTI bug build lama)
+    # B  local /services      → 60/60 reveal visible; tap service card: is-touch ✓, ::before matrix(1,0,0,1,0,0) (fill scaleY(1) aktif); tap spotlight (Home): is-lit ✓, --mx ter-set, ::before opacity transisi 0.38→1
+    # C  local reduce-motion  → tanpa js-reveal, opacityZero 0, animate-* animationName none (konten tetap tampil)
+    # D  drag Before/After (touch) → divider 52% → 81.7%, path tetap "/" (tidak ternavigasi)
+  node test-desktop.js # desktop 1440x900: 44/44 visible, opacityZero 0, stats count-up "10+ / 5+ / 100%", 0 pageerror
+  ```
+- **Catatan uji:** cookie banner (`CookieConsent`, muncul setelah 1,2 s di profil fresh) sempat menutupi titik hit-test di emulasi → di-dismiss dulu di skrip test (perilaku aplikasi normal, bukan bug).
+- **Unresolved:**
+  - **Belum diuji di HP Android fisik** — semua bukti dari emulasi headless; minta konfirmasi user setelah deploy.
+  - **Belum di-deploy** — `public/build` berubah dan di-track git; live masih build lama sampai commit+push dan cron auto-deploy / `git pull` manual di hosting.
+  - Guard `prefers-reduced-motion` untuk `mousemove` spotlight/magnetic di `Home.tsx:179±` (PERF A3) masih pending — scope sesi terpisah. **(KOREKSI 2026-10-17: guard ternyata SUDAH ADA sejak initial commit `6d5b1e7` — diverifikasi `git log -S`; sisa A3 yang nyata = forced reflow read rect, diselesaikan 2026-10-17. Lihat entri teratas.)**
+  - Breakpoint `xs:` di `Home.tsx` (`hidden xs:inline`) tidak ada di Tailwind default — label tab besar kemungkinan selalu tersembunyi; temuan terpisah, belum diubah.
+
+---
+
 ## 2026-10-16 — Blog Cover Upload (validasi ketat + auto-compress) & Fix "category required" saat Edit dengan File
 
 - **Fokus:** (1) `Admin/Blog.tsx` field "URL Cover (opsional)" ditambah upload file langsung — terima semua jenis foto, tolak file non-gambar/script, auto-resize + kompres. (2) Fix bug user: saat edit artikel dan memasukkan gambar, muncul "The category field is required".
