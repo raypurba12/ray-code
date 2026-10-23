@@ -25,6 +25,8 @@ import {
     Check,
     CheckCircle2,
     ChevronDown,
+    ChevronLeft,
+    ChevronRight,
     Code2,
     Cpu,
     Gauge,
@@ -33,6 +35,7 @@ import {
     Layers,
     Mail,
     MonitorSmartphone,
+    Pause,
     Play,
     Quote,
     Rocket,
@@ -1698,105 +1701,365 @@ function FaqFooterLinks({ footerText, align = 'center' }: { footerText: string; 
     );
 }
 
+/* ═══════════════════════ MOCKUP HP IG (3 layar untuk carousel CTA) ═══════════════════════ */
+function IgPhoneMockup({ variant }: { variant: number }) {
+    return (
+        <div className="relative mx-auto w-[282px] overflow-hidden rounded-[2.6rem] border-[10px] border-slate-900 bg-black shadow-[0_24px_64px_-16px_rgb(0_0_0/0.55),0_8px_24px_rgb(0_0_0/0.28)] sm:w-[300px]">
+            <div className="absolute left-1/2 top-0 z-20 flex h-7 w-28 -translate-x-1/2 items-center justify-center rounded-b-2xl bg-slate-900" aria-hidden>
+                <span className="h-1 w-12 rounded-full bg-slate-700" />
+            </div>
+            <div className="relative flex h-[580px] flex-col bg-white">
+                <div className="flex h-6 items-center justify-between bg-white px-6 pt-1 text-[11px] font-semibold text-slate-900">
+                    <span>09:41</span>
+                    <span className="flex items-center gap-1"><span className="h-2 w-4 rounded-sm border border-slate-900"><span className="block h-full w-3/4 bg-slate-900" /></span><span className="size-1 rounded-full bg-slate-900" /></span>
+                </div>
+
+                <div className="flex h-11 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3">
+                    <span className="flex items-center gap-1 text-[15px] font-bold tracking-tight text-slate-900">
+                        {variant === 2 ? 'Insights' : 'raycode.studio'}
+                        {variant !== 2 && <><ChevronDown className="size-3.5 text-slate-900" /><span className="ml-0.5 flex size-4 items-center justify-center rounded-full bg-sky-500 text-[9px] font-bold text-white">✓</span></>}
+                    </span>
+                    <span className="flex items-center gap-4 text-slate-900">
+                        <span className="relative"><span className="block size-5 rounded-[5px] border-[1.6px] border-slate-900" /><span className="absolute -right-1 -top-1 flex size-3 items-center justify-center rounded-full bg-red-500 text-[7px] font-bold text-white">9</span></span>
+                        <span className="text-lg leading-none">＋</span>
+                        <span className="flex flex-col gap-1"><span className="block h-0.5 w-5 bg-slate-900" /><span className="block h-0.5 w-5 bg-slate-900" /><span className="block h-0.5 w-5 bg-slate-900" /></span>
+                    </span>
+                </div>
+
+                <div className="flex-1 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {variant === 0 && (
+                        <>
+                            <div className="flex gap-4 px-3.5 py-3.5">
+                                <span className="relative shrink-0 rounded-full bg-gradient-to-tr from-[#feda75] via-[#d62976] to-[#4f5bd5] p-[2.5px]">
+                                    <img src="/ray.png?v=3" alt="Raycode" className="size-[78px] rounded-full border-[3px] border-white bg-white object-cover" />
+                                    <span className="absolute bottom-0 right-0 flex size-6 items-center justify-center rounded-full border-2 border-white bg-sky-500 text-[11px] font-bold text-white">＋</span>
+                                </span>
+                                <div className="flex flex-1 items-center justify-around">
+                                    <div className="text-center"><p className="text-[15px] font-bold leading-none text-slate-900">127</p><p className="text-[11px] leading-none text-slate-900">posts</p></div>
+                                    <div className="text-center"><p className="text-[15px] font-bold leading-none text-slate-900">12.4k</p><p className="text-[11px] leading-none text-slate-900">followers</p></div>
+                                    <div className="text-center"><p className="text-[15px] font-bold leading-none text-slate-900">86</p><p className="text-[11px] leading-none text-slate-900">following</p></div>
+                                </div>
+                            </div>
+                            <div className="px-3.5 pb-3">
+                                <p className="text-[13px] font-bold leading-tight text-slate-900">Raycode Studio</p>
+                                <p className="flex items-center gap-1 text-[12px] text-slate-500"><span className="rounded bg-slate-100 px-1 py-0.5 text-[10px] font-medium">raycode.dev</span> • Digital Studio</p>
+                                <p className="mt-1 text-[12px] leading-[1.45] text-slate-900">Build • Develop • Create<br />Laravel • React • TypeScript • MySQL<br />Bangun produk digital yang cepat rilis 🚀</p>
+                                <span className="mt-1 flex items-center gap-1 text-[12px] font-semibold text-sky-700"><span className="size-3 rounded-sm bg-sky-500" /> raycode.dev</span>
+                                <div className="mt-3 flex gap-1.5">
+                                    <span className="flex-1 rounded-lg bg-[#0095f6] py-[7px] text-center text-[13px] font-semibold text-white">Follow</span>
+                                    <span className="flex-1 rounded-lg bg-slate-100 py-[7px] text-center text-[13px] font-semibold text-slate-900">Message</span>
+                                    <span className="flex size-8 items-center justify-center rounded-lg bg-slate-100 text-slate-900">✚</span>
+                                </div>
+                            </div>
+                            <div className="flex gap-3.5 border-t border-slate-100 px-3.5 py-3.5">
+                                {[
+                                    { l: 'Proses', e: '🎯' },
+                                    { l: 'Karya', e: '💼' },
+                                    { l: 'Stack', e: '⚡' },
+                                    { l: 'Testi', e: '⭐' },
+                                ].map((h) => (
+                                    <div key={h.l} className="text-center">
+                                        <span className="flex size-[64px] items-center justify-center rounded-full bg-gradient-to-tr from-[#feda75] via-[#d62976] to-[#962fbf] p-[2px]"><span className="flex size-full items-center justify-center rounded-full border-2 border-white bg-white text-base">{h.e}</span></span>
+                                        <p className="mt-1 text-[11px] font-medium text-slate-900">{h.l}</p>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="flex border-y border-slate-200">
+                                <span className="flex flex-1 items-center justify-center gap-1.5 border-t border-slate-900 py-2.5 text-slate-900"><span className="grid size-3 grid-cols-3 gap-0.5"><span className="bg-slate-900" /><span className="bg-slate-900" /><span className="bg-slate-900" /><span className="bg-slate-900" /><span className="bg-slate-900" /><span className="bg-slate-900" /><span className="bg-slate-900" /><span className="bg-slate-900" /><span className="bg-slate-900" /></span></span>
+                                <span className="flex flex-1 items-center justify-center py-2.5 text-slate-400"><span className="size-4 rounded-sm border border-slate-400" /></span>
+                                <span className="flex flex-1 items-center justify-center py-2.5 text-slate-400"><span className="size-4 rounded-full border border-slate-400" /></span>
+                            </div>
+                            <div className="grid grid-cols-3 gap-[1.5px] bg-white pb-1">
+                                <div className="relative aspect-square bg-gradient-to-br from-slate-800 to-brand-800"><span className="absolute right-1 top-1 size-3 rounded-sm border border-white bg-white/20" /></div>
+                                <div className="relative aspect-square bg-gradient-to-br from-amber-100 to-orange-300"><span className="absolute right-1 top-1 flex gap-0.5"><span className="size-1.5 rounded-sm bg-white shadow" /><span className="size-1.5 rounded-sm bg-white/60" /></span></div>
+                                <div className="relative aspect-square bg-gradient-to-br from-slate-200 to-slate-300"><span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white drop-shadow">▶ 12.4k</span></div>
+                                <div className="aspect-square bg-gradient-to-br from-brand-100 to-sky-200" />
+                                <div className="aspect-square bg-gradient-to-br from-violet-100 to-purple-200" />
+                                <div className="aspect-square bg-gradient-to-br from-emerald-100 to-teal-200" />
+                                <div className="aspect-square bg-gradient-to-br from-zinc-800 to-zinc-900" />
+                                <div className="aspect-square bg-gradient-to-br from-blue-100 to-indigo-200" />
+                                <div className="aspect-square bg-gradient-to-br from-orange-100 to-amber-200" />
+                            </div>
+                        </>
+                    )}
+
+                    {variant === 1 && (
+                        <>
+                            <div className="flex items-center justify-between border-b border-slate-200 px-3 py-2">
+                                <span className="flex items-center gap-2">
+                                    <img src="/ray.png?v=3" alt="" className="size-7 rounded-full border border-slate-200 object-cover" />
+                                    <span className="text-[12px] font-bold text-slate-900">raycode.studio</span>
+                                    <span className="flex size-3.5 items-center justify-center rounded-full bg-sky-500 text-[8px] font-bold text-white">✓</span>
+                                </span>
+                                <span className="text-slate-500">•••</span>
+                            </div>
+                            <div className="relative flex aspect-[4/5] flex-col justify-between bg-gradient-to-br from-brand-600 via-brand-800 to-slate-900 p-4 text-white">
+                                <div className="flex items-center justify-between rounded-lg bg-white/10 px-2 py-1.5 text-[9px] font-medium backdrop-blur">
+                                    <span className="flex items-center gap-1"><span className="size-1.5 rounded-full bg-red-400" /><span className="size-1.5 rounded-full bg-amber-300" /><span className="size-1.5 rounded-full bg-emerald-400" /></span>
+                                    <span className="text-white/80">raycode.dev/kasir</span>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-semibold tracking-widest text-sky-200 uppercase">Studi Kasus</p>
+                                    <p className="mt-1 text-[20px] font-extrabold leading-tight">Sistem Kasir &amp; Inventori</p>
+                                    <p className="mt-1 text-[11px] leading-snug text-blue-100">Laravel • React • MySQL</p>
+                                    <div className="mt-3 flex gap-2">
+                                        <span className="rounded-md bg-white/15 px-2 py-1 text-[9px] font-semibold backdrop-blur">+38% omzet</span>
+                                        <span className="rounded-md bg-white/15 px-2 py-1 text-[9px] font-semibold backdrop-blur">1.2k transaksi/hari</span>
+                                    </div>
+                                </div>
+                                <span className="absolute left-1/2 top-1/2 grid size-12 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white/20 text-white backdrop-blur">
+                                    <Play className="ml-0.5 size-5 fill-current" />
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-3 px-3 py-2 text-slate-900">
+                                <span className="text-base">♡</span><span className="text-base">◯</span><span className="text-base">➤</span>
+                                <span className="ml-auto text-base">⌘</span>
+                            </div>
+                            <p className="px-3 text-[11px] font-bold text-slate-900">12.4k suka</p>
+                            <p className="px-3 pb-3 pt-1 text-[11px] leading-snug text-slate-700"><span className="font-bold text-slate-900">raycode.studio</span> Website kasir multi-outlet, laporan real-time, dan stok otomatis. Geser untuk lihat prosesnya →</p>
+                        </>
+                    )}
+
+                    {variant === 2 && (
+                        <>
+                            <div className="border-b border-slate-200 px-3.5 py-3">
+                                <p className="text-[11px] font-semibold text-slate-500">7 hari terakhir</p>
+                                <div className="mt-2 grid grid-cols-2 gap-2">
+                                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-2.5">
+                                        <p className="text-[10px] text-slate-500">Jangkauan</p>
+                                        <p className="mt-0.5 text-[17px] font-extrabold leading-none text-slate-900">128.4k</p>
+                                        <p className="mt-1 text-[9px] font-semibold text-emerald-600">↑ 32%</p>
+                                    </div>
+                                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-2.5">
+                                        <p className="text-[10px] text-slate-500">Interaksi</p>
+                                        <p className="mt-0.5 text-[17px] font-extrabold leading-none text-slate-900">9.812</p>
+                                        <p className="mt-1 text-[9px] font-semibold text-emerald-600">↑ 18%</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="border-b border-slate-200 px-3.5 py-3">
+                                <div className="flex items-center justify-between">
+                                    <p className="text-[11px] font-bold text-slate-900">Interaksi harian</p>
+                                    <p className="text-[9px] font-semibold text-sky-600">+18%</p>
+                                </div>
+                                <div className="mt-3 flex h-24 items-end gap-1.5">
+                                    {[38, 62, 49, 78, 57, 88, 71].map((h, i) => (
+                                        <div key={i} className="flex flex-1 flex-col items-center gap-1">
+                                            <div className={`w-full rounded-t-sm ${i === 5 ? 'bg-[#0095f6]' : 'bg-slate-200'}`} style={{ height: `${h}%` }} />
+                                            <span className="text-[8px] text-slate-400">{['S', 'S', 'R', 'K', 'J', 'S', 'M'][i]}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="px-3.5 py-3">
+                                <p className="text-[11px] font-bold text-slate-900">Konten terbaik</p>
+                                <div className="mt-2 flex flex-col gap-2">
+                                    {[
+                                        { c: 'from-brand-500 to-sky-400', t: 'Website kasir multi-outlet', v: '4.812' },
+                                        { c: 'from-amber-300 to-orange-400', t: 'Redesign landing page', v: '3.204' },
+                                        { c: 'from-emerald-300 to-teal-400', t: 'Tips website cepat', v: '2.771' },
+                                    ].map((item, i) => (
+                                        <div key={item.t} className="flex items-center gap-2.5">
+                                            <span className="text-[9px] font-bold text-slate-400">{i + 1}</span>
+                                            <span className={`size-9 shrink-0 rounded-md bg-gradient-to-br ${item.c}`} />
+                                            <span className="flex-1 truncate text-[11px] font-medium text-slate-900">{item.t}</span>
+                                            <span className="text-[10px] font-semibold text-slate-500">♡ {item.v}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </div>
+
+                <div className="flex h-[46px] shrink-0 items-center justify-around border-t border-slate-200 bg-white px-1">
+                    <span className="text-[18px]">⌂</span><span className="text-[16px]">⌕</span><span className="text-[18px]">⊞</span><span className="text-[16px]">♡</span><span className="size-7 rounded-full border border-slate-200 bg-slate-900 p-[2px]"><img src="/ray.png?v=3" className="size-full rounded-full object-cover" alt="" /></span>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 /* ═══════════════════════ CTA BAND — kiri mockup HP IG, kanan text + kotak biru reveal ═══════════════════════ */
 function CtaBand({ eyebrow, heading, description, primaryLabel, primaryHref, secondaryLabel, secondaryHref }: { eyebrow: string; heading: string; description: string; primaryLabel: string; primaryHref: string; secondaryLabel: string; secondaryHref: string }) {
+    const slideCount = 3;
+    const stageRef = useRef<HTMLDivElement>(null);
+    const [activeSlide, setActiveSlide] = useState(0);
+    const [isAutoplayPaused, setIsAutoplayPaused] = useState(false);
+    const [isReducedMotion, setIsReducedMotion] = useState(
+        () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    );
+    const [stageWidth, setStageWidth] = useState(0);
+
+    useEffect(() => {
+        const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+        const update = () => setIsReducedMotion(mq.matches);
+        update();
+        mq.addEventListener?.('change', update);
+        return () => mq.removeEventListener?.('change', update);
+    }, []);
+
+    useEffect(() => {
+        const el = stageRef.current;
+        if (!el) return;
+        setStageWidth(el.clientWidth);
+        if (typeof ResizeObserver === 'undefined') {
+            const onResize = () => setStageWidth(el.clientWidth);
+            window.addEventListener('resize', onResize);
+            return () => window.removeEventListener('resize', onResize);
+        }
+        const observer = new ResizeObserver((entries) => {
+            setStageWidth(entries[0]?.contentRect.width ?? el.clientWidth);
+        });
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, []);
+
+    const phoneHalfWidth = 150;
+    const showSidePhones = stageWidth >= 660;
+    const centerScale = stageWidth ? Math.min(1, Math.max(0.72, (stageWidth - 68) / 300)) : 1;
+    const sideScale = centerScale * 0.64;
+    const sideHalfWidth = phoneHalfWidth * sideScale;
+    const sideVisualHalfWidth = sideHalfWidth + 17 * centerScale;
+    const slideSpread = stageWidth
+        ? Math.max(140, Math.min(220, stageWidth / 2 - 38 - sideVisualHalfWidth))
+        : 140;
+    const phoneTop = 12;
+    const stageHeight = Math.round(600 * centerScale + 32);
+
+    useEffect(() => {
+        if (isReducedMotion || isAutoplayPaused) return;
+        const id = window.setTimeout(() => setActiveSlide((prev) => (prev + 1) % slideCount), 4500);
+        return () => window.clearTimeout(id);
+    }, [activeSlide, isAutoplayPaused, isReducedMotion, slideCount]);
+
+    useEffect(() => {
+        const el = stageRef.current;
+        if (!el) return;
+        let startX: number | null = null;
+        const onTouchStart = (e: TouchEvent) => {
+            startX = e.touches[0]?.clientX ?? null;
+        };
+        const onTouchEnd = (e: TouchEvent) => {
+            if (startX === null) return;
+            const diff = (e.changedTouches[0]?.clientX ?? startX) - startX;
+            startX = null;
+            if (Math.abs(diff) < 40) return;
+            setActiveSlide((prev) => (diff > 0 ? (prev - 1 + slideCount) % slideCount : (prev + 1) % slideCount));
+        };
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                setActiveSlide((prev) => (prev - 1 + slideCount) % slideCount);
+            } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                setActiveSlide((prev) => (prev + 1) % slideCount);
+            }
+        };
+        el.addEventListener('touchstart', onTouchStart, { passive: true });
+        el.addEventListener('touchend', onTouchEnd);
+        el.addEventListener('keydown', onKeyDown);
+        return () => {
+            el.removeEventListener('touchstart', onTouchStart);
+            el.removeEventListener('touchend', onTouchEnd);
+            el.removeEventListener('keydown', onKeyDown);
+        };
+    }, [slideCount]);
+
+    const goToSlide = (index: number) => setActiveSlide((index + slideCount) % slideCount);
+
     return (
         <section className="mx-auto max-w-7xl px-5 pb-24 lg:px-8 lg:pb-32 cv-auto">
             <Reveal>
-                <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-brand-700 via-brand-600 to-brand-800 px-6 py-10 shadow-2xl shadow-brand-600/30 sm:px-8 lg:grid lg:grid-cols-[340px_1fr] lg:items-center lg:gap-8 lg:px-8 lg:py-8 xl:grid-cols-[360px_1fr] xl:gap-10 xl:px-10 dark:from-brand-800 dark:via-brand-700 dark:to-[#12305e] dark:shadow-[0_32px_80px_-24px_rgb(29_78_216/0.55),inset_0_1px_0_rgb(255_255_255/0.12)]">
+                <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-brand-700 via-brand-600 to-brand-800 px-6 py-10 shadow-2xl shadow-brand-600/30 sm:px-8 lg:grid lg:grid-cols-[minmax(0,460px)_1fr] lg:items-center lg:gap-8 lg:px-8 lg:py-8 xl:grid-cols-[minmax(0,700px)_1fr] xl:gap-10 xl:px-10 dark:from-brand-800 dark:via-brand-700 dark:to-[#12305e] dark:shadow-[0_32px_80px_-24px_rgb(29_78_216/0.55),inset_0_1px_0_rgb(255_255_255/0.12)]">
                     <div className="bg-grid absolute inset-0 opacity-15" aria-hidden />
                     <div className="pointer-events-none absolute -top-24 -right-24 size-72 rounded-full bg-white/10 blur-3xl" aria-hidden />
                     <div className="pointer-events-none absolute -bottom-28 -left-20 size-72 rounded-full bg-brand-300/20 blur-3xl" aria-hidden />
 
-                    {/* Kiri — Mockup HP IG — besar + jarak, desain 1:1 IG asli, full keliatan */}
-                    <div className="relative mx-auto w-full max-w-[340px] pl-2 sm:max-w-[360px] lg:mx-0 lg:max-w-[340px] lg:pl-5 xl:pl-6">
-                        <div className="relative mx-auto w-[282px] overflow-hidden rounded-[2.6rem] border-[10px] border-slate-900 bg-black shadow-[0_24px_64px_-16px_rgb(0_0_0/0.55),0_8px_24px_rgb(0_0_0/0.28)] sm:w-[300px] lg:w-[300px]">
-                            {/* notch + speaker */}
-                            <div className="absolute left-1/2 top-0 z-20 flex h-7 w-28 -translate-x-1/2 items-center justify-center rounded-b-2xl bg-slate-900" aria-hidden>
-                                <span className="h-1 w-12 rounded-full bg-slate-700" />
-                            </div>
-                            {/* screen */}
-                            <div className="relative flex h-[580px] flex-col bg-white">
-                                {/* status bar */}
-                                <div className="flex h-6 items-center justify-between bg-white px-6 pt-1 text-[11px] font-semibold text-slate-900">
-                                    <span>09:41</span>
-                                    <span className="flex items-center gap-1"><span className="h-2 w-4 rounded-sm border border-slate-900"><span className="block h-full w-3/4 bg-slate-900" /></span><span className="size-1 rounded-full bg-slate-900" /></span>
-                                </div>
-                                {/* IG nav */}
-                                <div className="flex h-11 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3">
-                                    <span className="flex items-center gap-1 text-[15px] font-bold tracking-tight text-slate-900">raycode.studio <ChevronDown className="size-3.5 text-slate-900" /><span className="ml-0.5 flex size-4 items-center justify-center rounded-full bg-sky-500 text-[9px] font-bold text-white">✓</span></span>
-                                    <span className="flex items-center gap-4 text-slate-900">
-                                        <span className="relative"><span className="block size-5 rounded-[5px] border-[1.6px] border-slate-900" /><span className="absolute -right-1 -top-1 flex size-3 items-center justify-center rounded-full bg-red-500 text-[7px] font-bold text-white">9</span></span>
-                                        <span className="text-lg leading-none">＋</span>
-                                        <span className="flex flex-col gap-1"><span className="block h-0.5 w-5 bg-slate-900" /><span className="block h-0.5 w-5 bg-slate-900" /><span className="block h-0.5 w-5 bg-slate-900" /></span>
-                                    </span>
-                                </div>
-                                {/* scrollable content */}
-                                <div className="flex-1 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                                    {/* profile */}
-                                    <div className="flex gap-4 px-3.5 py-3.5">
-                                        <span className="relative shrink-0 rounded-full bg-gradient-to-tr from-[#feda75] via-[#d62976] to-[#4f5bd5] p-[2.5px]">
-                                            <img src="/ray.png?v=3" alt="Raycode" className="size-[78px] rounded-full border-[3px] border-white bg-white object-cover" />
-                                            <span className="absolute bottom-0 right-0 flex size-6 items-center justify-center rounded-full border-2 border-white bg-sky-500 text-[11px] font-bold text-white">＋</span>
-                                        </span>
-                                        <div className="flex flex-1 items-center justify-around">
-                                            <div className="text-center"><p className="text-[15px] font-bold leading-none text-slate-900">127</p><p className="text-[11px] leading-none text-slate-900">posts</p></div>
-                                            <div className="text-center"><p className="text-[15px] font-bold leading-none text-slate-900">12.4k</p><p className="text-[11px] leading-none text-slate-900">followers</p></div>
-                                            <div className="text-center"><p className="text-[15px] font-bold leading-none text-slate-900">86</p><p className="text-[11px] leading-none text-slate-900">following</p></div>
-                                        </div>
+                    {/* Kiri — Carousel 3 mockup HP IG */}
+                    <div className="relative mx-auto w-full max-w-[700px] lg:mx-0">
+                        <div
+                            ref={stageRef}
+                            role="region"
+                            aria-roledescription="carousel"
+                            aria-label="Preview layar Raycode Studio"
+                            tabIndex={0}
+                            onMouseEnter={() => setIsAutoplayPaused(true)}
+                            onMouseLeave={() => setIsAutoplayPaused(false)}
+                            onFocus={() => setIsAutoplayPaused(true)}
+                            onBlur={() => setIsAutoplayPaused(false)}
+                            className="relative mx-auto w-full touch-pan-y overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                            style={{ height: stageHeight }}
+                        >
+                            {[0, 1, 2].map((variant) => {
+                                const offset = ((variant - activeSlide + slideCount + 1) % slideCount) - 1;
+                                const isCenter = offset === 0;
+                                const sideVisible = isCenter || showSidePhones;
+                                return (
+                                    <div
+                                        key={variant}
+                                        aria-hidden={!isCenter}
+                                        className="absolute left-1/2 will-change-transform"
+                                        style={{
+                                            top: phoneTop,
+                                            transform: `translateX(calc(-50% + ${offset * slideSpread}px)) scale(${isCenter ? centerScale : sideScale}) rotate(${offset * 5}deg)`,
+                                            opacity: sideVisible ? (isCenter ? 1 : 0.94) : 0,
+                                            zIndex: isCenter ? 30 : 20,
+                                            pointerEvents: isCenter ? 'auto' : 'none',
+                                            transition: isReducedMotion ? 'none' : 'transform 550ms cubic-bezier(0.22, 1, 0.36, 1), opacity 400ms ease',
+                                        }}
+                                    >
+                                        <IgPhoneMockup variant={variant} />
                                     </div>
-                                    <div className="px-3.5 pb-3">
-                                        <p className="text-[13px] font-bold leading-tight text-slate-900">Raycode Studio</p>
-                                        <p className="flex items-center gap-1 text-[12px] text-slate-500"><span className="rounded bg-slate-100 px-1 py-0.5 text-[10px] font-medium">raycode.dev</span> • Digital Studio</p>
-                                        <p className="mt-1 text-[12px] leading-[1.45] text-slate-900">Build • Develop • Create<br />Laravel • React • TypeScript • MySQL<br />Bangun produk digital yang cepat rilis 🚀</p>
-                                        <span className="mt-1 flex items-center gap-1 text-[12px] font-semibold text-sky-700"><span className="size-3 rounded-sm bg-sky-500" /> raycode.dev</span>
-                                        <div className="mt-3 flex gap-1.5">
-                                            <span className="flex-1 rounded-lg bg-[#0095f6] py-[7px] text-center text-[13px] font-semibold text-white">Follow</span>
-                                            <span className="flex-1 rounded-lg bg-slate-100 py-[7px] text-center text-[13px] font-semibold text-slate-900">Message</span>
-                                            <span className="flex size-8 items-center justify-center rounded-lg bg-slate-100 text-slate-900">✚</span>
-                                        </div>
-                                    </div>
-                                    {/* highlights */}
-                                    <div className="flex gap-3.5 border-t border-slate-100 px-3.5 py-3.5">
-                                        {[
-                                            { l: 'Proses', e: '🎯' },
-                                            { l: 'Karya', e: '💼' },
-                                            { l: 'Stack', e: '⚡' },
-                                            { l: 'Testi', e: '⭐' },
-                                        ].map((h) => (
-                                            <div key={h.l} className="text-center">
-                                                <span className="flex size-[64px] items-center justify-center rounded-full bg-gradient-to-tr from-[#feda75] via-[#d62976] to-[#962fbf] p-[2px]"><span className="flex size-full items-center justify-center rounded-full border-2 border-white bg-white text-base">{h.e}</span></span>
-                                                <p className="mt-1 text-[11px] font-medium text-slate-900">{h.l}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    {/* tabs */}
-                                    <div className="flex border-y border-slate-200">
-                                        <span className="flex flex-1 items-center justify-center gap-1.5 border-t border-slate-900 py-2.5 text-slate-900"><span className="grid size-3 grid-cols-3 gap-0.5"><span className="bg-slate-900" /><span className="bg-slate-900" /><span className="bg-slate-900" /><span className="bg-slate-900" /><span className="bg-slate-900" /><span className="bg-slate-900" /><span className="bg-slate-900" /><span className="bg-slate-900" /><span className="bg-slate-900" /></span></span>
-                                        <span className="flex flex-1 items-center justify-center py-2.5 text-slate-400"><span className="size-4 rounded-sm border border-slate-400" /></span>
-                                        <span className="flex flex-1 items-center justify-center py-2.5 text-slate-400"><span className="size-4 rounded-full border border-slate-400" /></span>
-                                    </div>
-                                    {/* grid posts — 9 kotak biar ga kepotong */}
-                                    <div className="grid grid-cols-3 gap-[1.5px] bg-white pb-1">
-                                        <div className="relative aspect-square bg-gradient-to-br from-slate-800 to-brand-800"><span className="absolute right-1 top-1 size-3 rounded-sm border border-white bg-white/20" /></div>
-                                        <div className="relative aspect-square bg-gradient-to-br from-amber-100 to-orange-300"><span className="absolute right-1 top-1 flex gap-0.5"><span className="size-1.5 rounded-sm bg-white shadow" /><span className="size-1.5 rounded-sm bg-white/60" /></span></div>
-                                        <div className="relative aspect-square bg-gradient-to-br from-slate-200 to-slate-300"><span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white drop-shadow">▶ 12.4k</span></div>
-                                        <div className="aspect-square bg-gradient-to-br from-brand-100 to-sky-200" />
-                                        <div className="aspect-square bg-gradient-to-br from-violet-100 to-purple-200" />
-                                        <div className="aspect-square bg-gradient-to-br from-emerald-100 to-teal-200" />
-                                        <div className="aspect-square bg-gradient-to-br from-zinc-800 to-zinc-900" />
-                                        <div className="aspect-square bg-gradient-to-br from-blue-100 to-indigo-200" />
-                                        <div className="aspect-square bg-gradient-to-br from-orange-100 to-amber-200" />
-                                    </div>
-                                </div>
-                                {/* bottom nav — fixed */}
-                                <div className="flex h-[46px] shrink-0 items-center justify-around border-t border-slate-200 bg-white px-1">
-                                    <span className="text-[18px]">⌂</span><span className="text-[16px]">⌕</span><span className="text-[18px]">⊞</span><span className="text-[16px]">♡</span><span className="size-7 rounded-full border border-slate-200 bg-slate-900 p-[2px]"><img src="/ray.png?v=3" className="size-full rounded-full object-cover" alt="" /></span>
-                                </div>
-                            </div>
+                                );
+                            })}
+
+                            <button
+                                type="button"
+                                onClick={() => goToSlide(activeSlide - 1)}
+                                aria-label="Layar sebelumnya"
+                                className="absolute left-0 z-40 grid size-8 -translate-y-1/2 place-items-center rounded-full border border-white/30 bg-white/15 text-white backdrop-blur transition hover:bg-white/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                                style={{ top: phoneTop + 300 * centerScale }}
+                            >
+                                <ChevronLeft className="size-4" />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => goToSlide(activeSlide + 1)}
+                                aria-label="Layar berikutnya"
+                                className="absolute right-0 z-40 grid size-8 -translate-y-1/2 place-items-center rounded-full border border-white/30 bg-white/15 text-white backdrop-blur transition hover:bg-white/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                                style={{ top: phoneTop + 300 * centerScale }}
+                            >
+                                <ChevronRight className="size-4" />
+                            </button>
                         </div>
-                        {/* badge — di samping HP, tidak nempel */}
-                        <div className="absolute -top-2 left-full ml-5 hidden rounded-2xl border border-white bg-white px-2.5 py-2 shadow-[0_12px_32px_-8px_rgb(15_23_42/0.18)] sm:flex items-center gap-2">
+
+                        <div className="mt-4 flex items-center justify-center gap-3">
+                            <div className="flex items-center gap-1.5">
+                                {[0, 1, 2].map((index) => (
+                                    <button
+                                        key={index}
+                                        type="button"
+                                        onClick={() => goToSlide(index)}
+                                        aria-label={`Lihat layar ${index + 1}`}
+                                        aria-current={index === activeSlide ? 'true' : undefined}
+                                        className={`h-1.5 rounded-full transition-all duration-300 ${index === activeSlide ? 'w-5 bg-white' : 'w-1.5 bg-white/40 hover:bg-white/70'}`}
+                                    />
+                                ))}
+                            </div>
+                            {!isReducedMotion && (
+                                <button
+                                    type="button"
+                                    onClick={() => setIsAutoplayPaused((prev) => !prev)}
+                                    aria-label={isAutoplayPaused ? 'Putar carousel' : 'Jeda carousel'}
+                                    className="grid size-6 place-items-center rounded-full border border-white/30 bg-white/15 text-white backdrop-blur transition hover:bg-white/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                                >
+                                    {isAutoplayPaused ? <Play className="size-3 fill-current" /> : <Pause className="size-3 fill-current" />}
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="absolute right-0 top-2 z-30 hidden items-center gap-2 rounded-2xl border border-white bg-white px-2.5 py-2 shadow-[0_12px_32px_-8px_rgb(15_23_42/0.18)] sm:flex">
                             <span className="flex size-6 items-center justify-center rounded-lg bg-pink-50 text-pink-500 text-xs">♡</span>
                             <div><p className="whitespace-nowrap text-[11px] font-bold leading-none text-slate-900">12.4k followers</p><p className="whitespace-nowrap text-[10px] leading-none text-emerald-600">● online</p></div>
                         </div>

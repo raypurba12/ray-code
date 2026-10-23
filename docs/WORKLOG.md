@@ -14,6 +14,32 @@ Template entri:
 
 ---
 
+## 2026-10-23 — Fix homepage putih (komponen `IgPhoneMockup` hilang) + komposisi carousel 3 smartphone
+
+- **Fokus:** Menyelesaikan pekerjaan carousel CTA yang belum selesai (2026-10-22) dan memperbaiki laporan user "hasil web masih putih kosong".
+- **Akar masalah halaman putih (verified):** `Home.tsx` memakai `<IgPhoneMockup variant={...} />` tetapi komponennya **tidak pernah didefinisikan** (sisa refactor carousel setengah jadi) → `ReferenceError` saat render Home → React unmount → halaman putih. `npm run build` tidak menangkapnya karena esbuild tidak type-check; dev server crash saat runtime.
+- **File diubah:**
+  - `resources/js/Pages/Public/Home.tsx` — menambahkan komponen `IgPhoneMockup` (frame HP existing + 3 layar: profil, post studi kasus, insights) tanpa aset baru; komposisi carousel dirapikan: `ResizeObserver` mengukur lebar stage, HP tengah `scale 1` (300px), HP samping `scale 0.64` + rotasi ±5°, spread dinamis (maks 220px) sehingga ketiganya tersebar dan tidak menumpuk; transisi transform/opacity 550ms; panah di tepi stage (di luar grup), dots + tombol pause di bawah; autoplay/hover-pause/keyboard/swipe tetap. Grid CTA kiri diperlebar (`lg` 460px, `xl` 700px) agar 3 perangkat muat.
+  - `public/build/*` — rebuild (build di-track git). Manifest Home → `assets/Home-Bp8Rt6Ll.js` 82.06 kB.
+- **Responsif (verified headless):** desktop (stage ≥660px, mis. 1440/1280) = 3 perangkat terlihat saat diam; tablet 768 & landscape 1024 & mobile 390 = 1 perangkat (sisi disembunyikan, panah tetap di luar grup). Tidak ada overflow horizontal di 390.
+- **Perintah test + hasil aktual:**
+  ```powershell
+  npx tsc --noEmit                  # 0 error di Home.tsx (error lain pre-existing: AdminBreadcrumb, ConfirmModal, ToastProvider, ui, Admin/Orders)
+  npm run build                     # ✓ 13.05s, Home-Bp8Rt6Ll.js 82.06 kB
+  php artisan test --compact        # Tests: 1 skipped, 64 passed (251 assertions)
+  node measure-carousel2.mjs        # headless Chrome via php artisan serve :8000 + Vite dev
+  # 1440 idle (reduced-motion): 3 VIS (center 300x600, sides 225x399), group 186..809 di stage 148..848, arrowsOutside=true
+  # 1440 after next: tetap 3 VIS, posisi bergeser mulus | autoplay 5.2s: layar 3 → 1
+  # 768 / 1024 / 390: 1 VIS, arrowsOutside=true | 390 swipe: layar 1 → 2 | pageerrors: none
+  ```
+- **Keputusan:** mempertahankan aset/HP mockup existing dan hanya memakai `transform` (scale/rotate/translate) agar rasio tidak gepeng; HP samping tetap di belakang HP tengah dengan overlap kecil (±27px dari 192px) supaya layar terbaca; mobile/tablet menyembunyikan HP samping alih-alih mengecilkan semuanya (instruksi penyesuaian jumlah perangkat).
+- **Unresolved:**
+  - Belum diverifikasi di browser headed (mouse drag/arrow nyata) — headless sudah (posisi, next, autoplay, swipe).
+  - **Belum di-commit** — `Home.tsx` + `public/build` (build tracked) harus di-commit bersamaan sebelum push/deploy.
+  - Tidak ada perubahan backend/route/database.
+
+---
+
 ## 2026-10-17 — PERF A3: baca rect di dalam rAF (hapus forced reflow mousemove) + fix drag mouse Before/After + koreksi catatan docs
 
 - **Fokus:** Menyelesaikan sisa PERF A3 (forced reflow `getBoundingClientRect` di handler `mousemove`, `Home.tsx:186,249,263,517,904,1042,1153`) + koreksi temuan usang di docs.

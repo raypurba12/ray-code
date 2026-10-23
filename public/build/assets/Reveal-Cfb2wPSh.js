@@ -1,0 +1,1 @@
+import{j as m}from"./vendor-DUmJHVK2.js";import{c as o}from"./app-CXzNRZyn.js";function f({children:a,className:r,delay:s=0,direction:e="up",as:t="div"}){const l=e==="left"?"reveal-left":e==="right"?"reveal-right":"";return m.jsx(t,{"data-reveal":!0,style:{"--reveal-delay":`${s}ms`},className:o("reveal",l,r),children:a})}export{f as R};
