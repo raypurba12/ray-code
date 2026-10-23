@@ -1,7 +1,9 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
-import { ConfirmModal, type ConfirmVariant } from './ConfirmModal';
+import { createContext, lazy, Suspense, useContext, useState, useCallback, type ReactNode } from 'react';
+import type { ConfirmVariant } from './ConfirmModal';
+
+const ConfirmModal = lazy(() => import('./ConfirmModal').then((module) => ({ default: module.ConfirmModal })));
 
 export interface ConfirmOptions {
     title: string;
@@ -58,19 +60,21 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
         <ConfirmContext.Provider value={{ confirm }}>
             {children}
             {modalState.options && (
-                <ConfirmModal
-                    open={modalState.open}
-                    onClose={handleCancel}
-                    onConfirm={handleConfirm}
-                    title={modalState.options.title}
-                    description={modalState.options.description}
-                    variant={modalState.options.variant}
-                    confirmLabel={modalState.options.confirmLabel}
-                    cancelLabel={modalState.options.cancelLabel}
-                    wide={modalState.options.wide}
-                >
-                    {modalState.options.children}
-                </ConfirmModal>
+                <Suspense fallback={null}>
+                    <ConfirmModal
+                        open={modalState.open}
+                        onClose={handleCancel}
+                        onConfirm={handleConfirm}
+                        title={modalState.options.title}
+                        description={modalState.options.description}
+                        variant={modalState.options.variant}
+                        confirmLabel={modalState.options.confirmLabel}
+                        cancelLabel={modalState.options.cancelLabel}
+                        wide={modalState.options.wide}
+                    >
+                        {modalState.options.children}
+                    </ConfirmModal>
+                </Suspense>
             )}
         </ConfirmContext.Provider>
     );

@@ -166,7 +166,7 @@ function SidebarContent({ url, userName, userEmail, onNavigate }: { url: string;
             <div className="flex h-[64px] shrink-0 items-center justify-between border-b border-slate-100 px-6 dark:border-slate-800">
                 <Link href={R.home} className="inline-flex items-center gap-3">
                     <span className="flex size-8 items-center justify-center overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-black/5 dark:bg-white dark:ring-white/10">
-                        <img src="/ray.png" alt="Raycode" width={32} height={32} className="size-8 object-contain p-1" />
+                        <img src="/ray-logo.png" alt="Raycode" width={32} height={32} className="size-8 object-contain p-1" />
                     </span>
                     <span className="font-mono text-[15px] font-semibold tracking-tight text-slate-900 dark:text-white">
                         ray<span className="text-brand-600 dark:text-brand-400">code</span>

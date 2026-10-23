@@ -14,6 +14,49 @@ Template entri:
 
 ---
 
+## 2026-10-23 (lanjutan) — Implementasi optimasi performa homepage (tanpa redesign)
+
+- **Fokus:** Menindaklanjuti audit performa: lazy-load Snap, lepas framer-motion dari homepage, optimasi logo/favicon/watermark, dan hilangkan delay LCP pada H1 hero. Tidak ada perubahan layout/visual.
+- **File diubah:**
+  - `resources/views/app.blade.php` — hapus `<script snap.js>` global; ganti dengan meta `midtrans-snap-url` + `midtrans-client-key`; favicon memakai `/favicon-32x32.png`, `/favicon-16x16.png`, `/apple-touch-icon.png`.
+  - `resources/js/Pages/Client/InvoiceShow.tsx` — `loadSnap()` memuat Snap on-demand (dedupe, retry, `data-client-key`), preload hanya saat invoice `unpaid`; fallback gagal tidak lagi mengklaim pembayaran berhasil.
+  - `resources/js/Components/useConfirm.tsx` — `ConfirmModal` di-`lazy()` + `Suspense`; `ui.tsx` menghapus re-export `ToastProvider`/`ConfirmModal`/`useConfirm`/`AdminBreadcrumb` yang membuat chunk `motion` ikut ke homepage.
+  - `resources/js/Components/layout/PublicLayout.tsx` — logo memakai `ray-logo.png`; watermark memakai `ray-watermark.webp` + `loading="lazy"`.
+  - `resources/js/Components/layout/AdminLayout.tsx`, `resources/js/Pages/Error.tsx`, `resources/js/Pages/Public/Home.tsx` — semua pemakaian logo kecil/avatar memakai `ray-logo.png`; `ray.png` hanya untuk OG/JSON-LD.
+  - `resources/js/Components/Reveal.tsx` + `Home.tsx` — prop `priority`; wrapper H1 hero render `is-visible` sejak awal agar tidak menunggu IO/transition.
+- **Aset baru:** `public/ray-logo.png` 360x120 / **18.2KB**; `public/ray-watermark.webp` 1600x535 / **45.1KB**. `public/ray.png` 304.5KB tetap untuk schema/OG, tidak lagi di-fetch halaman.
+- **Keputusan:** Snap hanya dibutuhkan `InvoiceShow` (`window.snap.pay`); TrackOrder memakai vtweb redirect. Watermark dipisah agar tidak mengorbankan kualitas logo header. H1 priority mengorbankan fade-in H1 saja; elemen hero lain tetap beranimasi.
+- **Test + hasil aktual:**
+  ```text
+  npm run build                  -> sukses 10.23s
+                                  app-DMVKJhGZ.js 26.51KB, Home-C-4kylzH.js 82.09KB,
+                                  ui-C5P-xQaN.js 12.43KB, ConfirmModal-BCv3uSgl.js 3.79KB,
+                                  InvoiceShow-B4EHjHyV.js 7.91KB
+  php artisan test --compact     -> 1 skipped, 64 passed (251 assertions)
+  npx tsc --noEmit               -> hanya error pre-existing (AdminBreadcrumb, ConfirmModal, ToastProvider, ui, Admin/Orders); tidak ada error di file yang diubah
+  cek HTML lokal                 -> tidak ada <script snap.js>; meta Snap ada; tidak ada ray.png
+  Lighthouse lokal               -> request homepage tidak memuat snap/Midtrans, motion, atau ray.png; total awal 1,061 KiB
+  CDP LCP probe lokal            -> no-preference 3.84s vs reduce 3.93s (delay reveal H1 hilang; TTFB lokal 2.3s)
+  ```
+- **Catatan:** Lighthouse lokal (`php artisan serve`) tidak representatif (single-thread, tanpa Brotli); skor lokal fluktuatif 31-50. Setelah deploy, ukur live dengan `lighthouse https://raycode.my.id/ --only-categories=performance`.
+- **Unresolved:** Perubahan belum di-commit/push/deploy; live masih build lama. Layout font scaling 130%+ (header meluber) belum diubah karena menunggu screenshot/konfirmasi HP. Live Snap masih sandbox; cek `MIDTRANS_IS_PRODUCTION`.
+
+---
+
+## 2026-10-23 (lanjutan) — Audit animasi HP asli, layout font scaling, dan performa live
+
+- **Fokus:** Menjelaskan animasi mati di HP asli, layout tidak rapi dibanding emulasi mobile, dan audit performa `https://raycode.my.id` tanpa mengubah desain. Verifikasi juga status live setelah commit `700b088`.
+- **Deploy update:** `700b088` sudah commit/push (berisi sync `public_html` di `deploy.sh`). Live `app-CXzNRZyn.js`, `app-lVJzhAvQ.css`, `Home-Bp8Rt6Ll.js` sekarang **200**; Lighthouse live berhasil render (tidak ada 404 aset). Catatan “belum di-commit” di entri deploy lama sudah tidak berlaku.
+- **Animasi — penyebab utama (verified):** saat `prefers-reduced-motion: reduce`, `initRevealEngine()` (`app.tsx:36`) return sebelum menambah `js-reveal`, dan CSS `app.css:199-222, 332, 493` mematikan reveal/transition/animation. Emulasi CDP reduce: `jsReveal=false`, `reveals=0/44`, marquee `none`, carousel tetap “Lihat layar 1”; no-preference: `jsReveal=true`, `reveals=36/44` setelah scroll, marquee jalan, carousel pindah “Lihat layar 2”. Cocok dengan gejala HP asli. Cek Android Settings > Accessibility > Remove animations / iOS Reduce Motion.
+- **Layout — penyebab utama (verified):** emulasi DevTools memakai font default 16px. Audit 360px: 100%/115% tidak ada overflow dokumen; 130% (20.8px) grup tombol kanan header melewati viewport 16px; 150% (24px) melewati 74px dan card grid melewati 15px; 320px/125% melewati 42px. Ini pola “di extension rapi, di HP berantakan” jika font/display size HP diperbesar.
+- **Performa live (Lighthouse 12.8.2 mobile):** score **35**; FCP 3.8s, LCP 9.5s (render delay 8,763ms / 93%, elemen H1 hero), TBT 2,100ms, CLS 0, SI 5.7s, TTI 9.5s; total 1,941 KiB / 40 request; TTFB 200ms; Brotli aktif, cache aset 30 hari.
+- **Temuan performa:** Snap popup Midtrans 743.5KB + Alibaba/Aliyun 501.3KB + Google Fonts 74.2KB dimuat global dari `app.blade.php:69`; hanya `Client/InvoiceShow.tsx` yang memakai `window.snap.pay` (TrackOrder memakai vtweb URL). `motion-Dp7tbtYy.js` 42.5KB ikut di homepage karena `ConfirmProvider` meng-import `ConfirmModal`/framer-motion secara global; unused JS 93KB. `public/ray.png` 2170x725 / 304.8KB dipakai navbar (~143x48), watermark footer, favicon, dan apple-touch-icon; Lighthouse menaksir savings 231-305KB. Long task utama: app 2.0s, vendor 1.5s, Home 0.87s. LCP H1 ditunda reveal: 3.66s vs 1.98s saat reduce (unthrottled).
+- **Catatan live:** Snap yang dimuat adalah **sandbox** (`snap-assets.sandbox.midtrans.com`), jadi `MIDTRANS_IS_PRODUCTION` di server perlu dikonfirmasi/diperbaiki jika live seharusnya produksi.
+- **Perintah test:** `lighthouse https://raycode.my.id/ --only-categories=performance --disable-full-page-screenshot`; CDP LCP probe + `mobile-audit.mjs` (412/360/320, font 18.4/20.8/24, reduce motion). Tidak ada perubahan kode aplikasi pada sesi audit ini.
+- **Tindak lanjut:** Optimasi (lazy Snap, lazy ConfirmModal, `ray.png`/favicon, reveal above-fold) sudah diterapkan pada entri di atas. **Unresolved:** butuh model/browser HP, screenshot area yang tidak rapi, serta status Reduce Motion dan font/display size untuk konfirmasi.
+
+---
+
 ## 2026-10-23 (lanjutan) — Fix deploy putih kosong: aset build tidak tersinkron ke `public_html`
 
 - **Gejala:** Setelah commit `ca2af7a` di-push dan deploy, `https://raycode.my.id` putih kosong. Console Firefox menampilkan error CSS (`Selector expected`, `Ruleset ignored due to bad selector`) plus noise WebGL/`feilin056...`/`main.popup.sandbox`/`file:///`.

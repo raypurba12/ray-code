@@ -6,7 +6,7 @@ import { Badge, Button, ButtonLink, Card, StatusPill } from '@/Components/ui';
 import { trackEvent } from '@/lib/analytics';
 import { router, usePage } from '@inertiajs/react';
 import { ArrowLeft, Building2, CreditCard, Loader2, Mail, Printer, ShieldCheck } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 interface Props extends PageProps {
     invoice: Invoice & {
@@ -16,10 +16,77 @@ interface Props extends PageProps {
     midtransClientKey?: string;
 }
 
+function readMeta(name: string): string | null {
+    if (typeof document === 'undefined') return null;
+    return document.querySelector<HTMLMetaElement>(`meta[name="${name}"]`)?.content ?? null;
+}
+
+let snapLoader: Promise<void> | null = null;
+
+function loadSnap(): Promise<void> {
+    if (typeof window === 'undefined') return Promise.reject(new Error('no_window'));
+    if ((window as any).snap) return Promise.resolve();
+    if (snapLoader) return snapLoader;
+
+    snapLoader = new Promise((resolve, reject) => {
+        const src = readMeta('midtrans-snap-url') ?? 'https://app.sandbox.midtrans.com/snap/snap.js';
+        const clientKey = readMeta('midtrans-client-key') ?? '';
+        const existing = document.querySelector<HTMLScriptElement>('script[data-snap-loader="true"]');
+
+        if (existing?.dataset.snapState === 'loading') {
+            existing.addEventListener('load', () => resolve(), { once: true });
+            existing.addEventListener(
+                'error',
+                () => {
+                    existing.remove();
+                    snapLoader = null;
+                    reject(new Error('snap_load_failed'));
+                },
+                { once: true },
+            );
+            return;
+        }
+
+        existing?.remove();
+
+        const script = document.createElement('script');
+        script.src = src;
+        script.async = true;
+        script.dataset.snapLoader = 'true';
+        script.dataset.snapState = 'loading';
+        if (clientKey) script.dataset.clientKey = clientKey;
+        script.addEventListener(
+            'load',
+            () => {
+                script.dataset.snapState = 'loaded';
+                resolve();
+            },
+            { once: true },
+        );
+        script.addEventListener(
+            'error',
+            () => {
+                script.remove();
+                snapLoader = null;
+                reject(new Error('snap_load_failed'));
+            },
+            { once: true },
+        );
+        document.head.appendChild(script);
+    });
+
+    return snapLoader;
+}
+
 export default function InvoiceShow({ invoice }: Props) {
     const user = usePage<PageProps>().props.auth.user!;
     const taxRate = invoice.amount > 0 ? Math.round((invoice.tax / invoice.amount) * 100) : 11;
     const [loadingPay, setLoadingPay] = useState(false);
+
+    useEffect(() => {
+        if (invoice.status !== 'unpaid') return;
+        void loadSnap().catch(() => {});
+    }, [invoice.status]);
 
     const print = () => window.print();
 
@@ -33,17 +100,22 @@ export default function InvoiceShow({ invoice }: Props) {
                 onClose: () => setLoadingPay(false),
             });
         } else {
-            alert('Pembayaran Midtrans berhasil diproses.');
+            alert('Unable to load Midtrans. Please refresh and try again.');
             setLoadingPay(false);
-            router.reload();
         }
     };
 
-    const handlePay = () => {
+    const handlePay = async () => {
         trackEvent('snap_pay_click', { invoice: invoice.number, total: invoice.total, kind: (invoice as any).kind ?? 'full' });
         setLoadingPay(true);
         if (invoice.snap_token) {
-            openSnap(invoice.snap_token);
+            try {
+                await loadSnap();
+                openSnap(invoice.snap_token);
+            } catch {
+                alert('Unable to load Midtrans. Please refresh and try again.');
+                setLoadingPay(false);
+            }
             return;
         }
 
@@ -52,10 +124,16 @@ export default function InvoiceShow({ invoice }: Props) {
             {},
             {
                 preserveScroll: true,
-                onSuccess: (page) => {
+                onSuccess: async (page) => {
                     const token = (page.props as any).flash?.snap_token || (page.props as any).snap_token || invoice.snap_token;
                     if (token) {
-                        openSnap(token);
+                        try {
+                            await loadSnap();
+                            openSnap(token);
+                        } catch {
+                            alert('Unable to load Midtrans. Please refresh and try again.');
+                            setLoadingPay(false);
+                        }
                     } else {
                         setLoadingPay(false);
                         router.reload();

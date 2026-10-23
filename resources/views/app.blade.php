@@ -9,8 +9,9 @@
     <title inertia>{{ $page['props']['title'] ?? 'Raycode — Studio Pengembangan Web' }}</title>
     <meta name="description" content="Raycode — studio pengembangan web premium. Pembuatan website, web app, debugging, code review, konsultasi & dukungan teknis." />
     <link rel="icon" href="/favicon.ico" sizes="any" />
-    <link rel="icon" href="/ray.png?v=3" type="image/png" sizes="any" />
-    <link rel="apple-touch-icon" href="/ray.png?v=3" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="dns-prefetch" href="https://app.midtrans.com" />
@@ -65,11 +66,8 @@
     @if($plausibleDomain)
     <script defer data-domain="{{ $plausibleDomain }}" src="https://plausible.io/js/script.js"></script>
     @endif
-    <script
-        src="{{ config('midtrans.is_production') ? 'https://app.midtrans.com/snap/snap.js' : 'https://app.sandbox.midtrans.com/snap/snap.js' }}"
-        data-client-key="{{ config('midtrans.client_key') }}"
-        async
-    ></script>
+    <meta name="midtrans-snap-url" content="{{ config('midtrans.is_production') ? 'https://app.midtrans.com/snap/snap.js' : 'https://app.sandbox.midtrans.com/snap/snap.js' }}" />
+    <meta name="midtrans-client-key" content="{{ config('midtrans.client_key') }}" />
     @viteReactRefresh
     @inertiaHead
     @vite(['resources/css/app.css', 'resources/js/app.tsx'])

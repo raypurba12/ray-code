@@ -1,0 +1,1 @@
+import{j as i}from"./vendor-DUmJHVK2.js";import{c as m}from"./utils-BvS_E-ZY.js";function n({children:s,className:l,delay:r=0,direction:e="up",as:t="div",priority:a=!1}){const v=e==="left"?"reveal-left":e==="right"?"reveal-right":"";return i.jsx(t,{"data-reveal":a?void 0:!0,style:{"--reveal-delay":`${r}ms`},className:m("reveal",v,a&&"is-visible",l),children:s})}export{n as R};

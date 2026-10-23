@@ -319,7 +319,7 @@ function Hero({ h }: { h: HomepageData }) {
                             </span>
                         </Reveal>
 
-                        <Reveal delay={200}>
+                        <Reveal delay={200} priority>
                             <div className="mt-6 flex justify-center lg:justify-start">
                                 <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-1 text-xs font-semibold tracking-wider text-white uppercase">
                                     <span className="size-1.5 rounded-full bg-sky-300" />
@@ -1731,7 +1731,7 @@ function IgPhoneMockup({ variant }: { variant: number }) {
                         <>
                             <div className="flex gap-4 px-3.5 py-3.5">
                                 <span className="relative shrink-0 rounded-full bg-gradient-to-tr from-[#feda75] via-[#d62976] to-[#4f5bd5] p-[2.5px]">
-                                    <img src="/ray.png?v=3" alt="Raycode" className="size-[78px] rounded-full border-[3px] border-white bg-white object-cover" />
+                                    <img src="/ray-logo.png?v=1" alt="Raycode" className="size-[78px] rounded-full border-[3px] border-white bg-white object-cover" />
                                     <span className="absolute bottom-0 right-0 flex size-6 items-center justify-center rounded-full border-2 border-white bg-sky-500 text-[11px] font-bold text-white">＋</span>
                                 </span>
                                 <div className="flex flex-1 items-center justify-around">
@@ -1787,7 +1787,7 @@ function IgPhoneMockup({ variant }: { variant: number }) {
                         <>
                             <div className="flex items-center justify-between border-b border-slate-200 px-3 py-2">
                                 <span className="flex items-center gap-2">
-                                    <img src="/ray.png?v=3" alt="" className="size-7 rounded-full border border-slate-200 object-cover" />
+                                    <img src="/ray-logo.png?v=1" alt="" className="size-7 rounded-full border border-slate-200 object-cover" />
                                     <span className="text-[12px] font-bold text-slate-900">raycode.studio</span>
                                     <span className="flex size-3.5 items-center justify-center rounded-full bg-sky-500 text-[8px] font-bold text-white">✓</span>
                                 </span>
@@ -1873,7 +1873,7 @@ function IgPhoneMockup({ variant }: { variant: number }) {
                 </div>
 
                 <div className="flex h-[46px] shrink-0 items-center justify-around border-t border-slate-200 bg-white px-1">
-                    <span className="text-[18px]">⌂</span><span className="text-[16px]">⌕</span><span className="text-[18px]">⊞</span><span className="text-[16px]">♡</span><span className="size-7 rounded-full border border-slate-200 bg-slate-900 p-[2px]"><img src="/ray.png?v=3" className="size-full rounded-full object-cover" alt="" /></span>
+                    <span className="text-[18px]">⌂</span><span className="text-[16px]">⌕</span><span className="text-[18px]">⊞</span><span className="text-[16px]">♡</span><span className="size-7 rounded-full border border-slate-200 bg-slate-900 p-[2px]"><img src="/ray-logo.png?v=1" className="size-full rounded-full object-cover" alt="" /></span>
                 </div>
             </div>
         </div>

@@ -15,10 +15,10 @@ export function Logo({ light: _light = false }: { light?: boolean }) {
     return (
         <Link href={R.home} className="group inline-flex items-center">
             <img
-                src="/ray.png?v=3"
+                src="/ray-logo.png?v=1"
                 alt="Raycode"
-                width={220}
-                height={48}
+                width={360}
+                height={120}
                 className="h-12 w-auto max-w-[240px] object-contain transition-transform duration-300 group-hover:scale-[1.02] dark:invert sm:h-14 sm:max-w-[260px]"
                 loading="eager"
                 decoding="async"
@@ -397,14 +397,14 @@ function Footer() {
     const address = settings?.address ?? 'Jakarta — Remote-first';
     return (
         <footer className="relative overflow-hidden border-t border-slate-200/70 bg-slate-50 text-slate-600 dark:border-white/[0.06] dark:bg-[#0a0d14] dark:text-slate-400">
-            {/* Watermark besar — pakai logo asli /ray.png, konsisten dengan Logo header: light = original, dark = invert */}
+            {/* Watermark besar — file WebP terpisah dan lazy-load, light = original, dark = invert */}
             <div className="pointer-events-none absolute inset-x-0 bottom-0 select-none overflow-hidden" aria-hidden>
                 <img
-                    src="/ray.png?v=3"
+                    src="/ray-watermark.webp?v=1"
                     alt=""
                     width={1600}
-                    height={480}
-                    loading="eager"
+                    height={535}
+                    loading="lazy"
                     decoding="async"
                     className="mx-auto w-[148%] max-w-[1700px] translate-y-[22%] opacity-[0.11] sm:w-[132%] sm:translate-y-[18%] sm:opacity-[0.12] lg:w-[112%] lg:max-w-[1440px] lg:translate-y-[22%] dark:invert dark:opacity-[0.09] dark:sm:opacity-[0.10] dark:lg:opacity-[0.11]"
                 />

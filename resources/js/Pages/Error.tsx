@@ -205,7 +205,7 @@ export default function Error({ status, message }: { status: number; message?: s
             <header className="relative z-20 mx-auto flex w-full max-w-7xl items-center justify-between px-5 py-5 lg:px-8">
                 <Link href="/" className="group inline-flex items-center gap-2.5">
                     <span className="relative flex size-9 items-center justify-center overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-black/5 transition-transform duration-300 group-hover:rotate-3 group-hover:shadow-md">
-                        <img src="/ray.png" alt="Raycode" width={36} height={36} className="size-9 object-contain p-1" />
+                        <img src="/ray-logo.png" alt="Raycode" width={36} height={36} className="size-9 object-contain p-1" />
                     </span>
                     <span className="font-mono text-lg font-semibold tracking-tight text-white">
                         ray<span className="text-white">code</span>
