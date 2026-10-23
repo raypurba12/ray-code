@@ -137,6 +137,8 @@ Jika `git pull` gagal karena diverged branch atau perubahan lokal, **berhenti**.
 
 Karena domain melayani file dari `~/public_html`, sedangkan repository proyek berada di `~/ray-code`, salin aset build terbaru ke folder publik.
 
+> **Sejak 23 Oktober 2026**, `deploy.sh` menjalankan langkah ini otomatis (default `PUBLIC_HTML_DIR=~/public_html`, bisa dioverride lewat environment variable). Langkah manual di bawah tetap dipakai jika deploy tanpa `deploy.sh` atau untuk verifikasi.
+
 ### 5A. Periksa file build di proyek
 
 ```bash
@@ -198,13 +200,13 @@ Ganti nama file jika manifest build terbaru memakai nama berbeda:
 
 ```bash
 curl -s -o /dev/null -w "JS: %{http_code}\n" \
-https://raycode.my.id/build/assets/app-CIaU6Al-.js
+https://raycode.my.id/build/assets/app-CXzNRZyn.js
 
 curl -s -o /dev/null -w "CSS: %{http_code}\n" \
-https://raycode.my.id/build/assets/app-kBe1XNWd.css
+https://raycode.my.id/build/assets/app-lVJzhAvQ.css
 ```
 
-Nama di atas hanya contoh dari build 16 Oktober 2026. Gunakan nama file terbaru dari HTML/manifest saat melakukan deploy berikutnya.
+Nama di atas hanya contoh dari build 23 Oktober 2026. Gunakan nama file terbaru dari HTML/manifest saat melakukan deploy berikutnya.
 
 Target: `200` untuk JS dan CSS. Jika `404`, jangan langsung mengubah kode aplikasi. Periksa apakah file yang diminta ada di `~/public_html/build/assets`, apakah manifest sesuai, dan apakah document root/domain benar.
 
@@ -235,7 +237,7 @@ Target: `200` untuk JS dan CSS. Jika `404`, jangan langsung mengubah kode aplika
 - [ ] Perubahan sudah di-commit dan di-push ke branch yang benar.
 - [ ] Backup `public_html/build` dan `ray-code/public/build` berhasil dibuat.
 - [ ] `git pull --ff-only` berhasil di hosting.
-- [ ] Aset baru disalin ke `public_html/build/assets`.
+- [ ] Aset baru tersalin ke `public_html/build/assets` (otomatis oleh `deploy.sh`, atau langkah manual 5).
 - [ ] Manifest di `public_html/build/manifest.json` cocok dengan build terbaru.
 - [ ] URL JS/CSS mengembalikan HTTP 200.
 - [ ] Website dan fitur terkait lolos uji browser.
@@ -244,6 +246,6 @@ Target: `200` untuk JS dan CSS. Jika `404`, jangan langsung mengubah kode aplika
 
 ## Catatan penting untuk perbaikan deploy jangka panjang
 
-Saat ini ada dua lokasi publik (`~/ray-code/public` dan `~/public_html`) yang tidak otomatis tersinkron. Inilah yang menyebabkan HTML meminta nama aset baru sementara file tersebut belum tersedia di folder yang dilayani domain.
+Saat ini ada dua lokasi publik (`~/ray-code/public` dan `~/public_html`) yang tidak otomatis tersinkron. Sejak 23 Oktober 2026, `deploy.sh` sudah menyalin `public/build/assets` dan `manifest.json` ke `~/public_html/build` setiap deploy, sehingga risiko HTML meminta aset baru yang belum ada di folder publik sudah ditutup untuk alur deploy normal. Namun dua lokasi ini tetap bisa berbeda jika ada deploy di luar `deploy.sh`, jadi verifikasi langkah 7 tetap wajib.
 
 Solusi jangka panjang yang lebih rapi adalah menjadikan document root domain langsung mengarah ke `~/ray-code/public`, jika hosting mengizinkan, atau membuat prosedur deploy otomatis yang menyalin **seluruh build secara konsisten dan atomik** ke `public_html`. Jangan mengubah document root tanpa memeriksa dukungan hosting dan konfigurasi Laravel terlebih dahulu.

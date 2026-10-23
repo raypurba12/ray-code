@@ -14,6 +14,32 @@ Template entri:
 
 ---
 
+## 2026-10-23 (lanjutan) — Fix deploy putih kosong: aset build tidak tersinkron ke `public_html`
+
+- **Gejala:** Setelah commit `ca2af7a` di-push dan deploy, `https://raycode.my.id` putih kosong. Console Firefox menampilkan error CSS (`Selector expected`, `Ruleset ignored due to bad selector`) plus noise WebGL/`feilin056...`/`main.popup.sandbox`/`file:///`.
+- **Diagnosis (verified via HTTP):** HTML live meminta aset build baru `app-CXzNRZyn.js`, `app-lVJzhAvQ.css`, `Home-Bp8Rt6Ll.js`, `icons-K9WDykFC.js` — semuanya **404** (body HTML 404, bukan JS/CSS). `public_html/build` di hosting masih build 16 Oktober: `/build/manifest.json` `Last-Modified: Fri, 16 Oct 2026`, berisi `app-CIaU6Al-.js` + `Home-DR9_bfoG.js` (200). Artinya `~/ray-code` sudah ter-update, tetapi aset tidak tersalin ke folder yang dilayani domain. app JS 404 → React tidak mount → halaman putih; CSS 404 diparse Firefox sebagai CSS → error selector. Error WebGL/`feilin056...`/`file:///` berasal dari ekstensi browser, bukan aplikasi.
+- **Akar masalah:** `deploy.sh` (dipakai `auto-deploy.sh` cron) hanya `git pull` + migrate + `optimize:clear`; langkah sinkronisasi aset di `Panduan_Deploy_Raycode.md` bagian 5 masih manual dan terlewat.
+- **File diubah:**
+  - `deploy.sh` — langkah baru `2/5`: `PUBLIC_HTML_DIR="${PUBLIC_HTML_DIR:-$HOME/public_html}"`, validasi `public/build/manifest.json`, `cp -an public/build/assets/. "$PUBLIC_HTML_DIR/build/assets/"`, lalu `cp -f public/build/manifest.json "$PUBLIC_HTML_DIR/build/manifest.json"`. Nomor langkah lain disesuaikan; aset lama tidak dihapus.
+  - `Panduan_Deploy_Raycode.md` — catatan bahwa `deploy.sh` otomatis sync, contoh nama aset build 23 Oktober, checklist deploy, dan catatan jangka panjang diperbarui.
+- **Test + hasil aktual:**
+  ```text
+  bash -n deploy.sh          -> syntax OK
+  bash -n auto-deploy.sh     -> syntax OK
+  simulasi copy ke temp      -> copiedAssets=59, manifestBytes=26591, manifestMatchesHEAD=yes
+  php artisan test --compact -> 1 skipped, 64 passed (251 assertions)
+  git diff --check           -> bersih
+  ```
+- **Unresolved / tindakan di hosting (belum dijalankan dari lokal, butuh akses SSH/cPanel Terminal):**
+  ```bash
+  cd ~/ray-code
+  git pull --ff-only
+  bash deploy.sh        # atau: salin manual assets + manifest ke ~/public_html/build
+  ```
+  Lalu purge cache PageSpeed DomaiNesia bila `/build/manifest.json` masih `STALE`, hard refresh/incognito, dan cek aset baru harus `200`. Perubahan `deploy.sh` + panduan ini belum di-commit/push.
+
+---
+
 ## 2026-10-23 — Fix homepage putih (komponen `IgPhoneMockup` hilang) + komposisi carousel 3 smartphone
 
 - **Fokus:** Menyelesaikan pekerjaan carousel CTA yang belum selesai (2026-10-22) dan memperbaiki laporan user "hasil web masih putih kosong".
