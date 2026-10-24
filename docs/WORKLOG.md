@@ -14,6 +14,47 @@ Template entri:
 
 ---
 
+## 2026-10-24 — Audit alur deploy logo (navbar production tanpa gambar) + perluas `deploy.sh` ke aset statis
+
+- **Fokus:** Audit deployment `ray.png`/`ray-logo.png` dari lokal sampai production tanpa mengubah desain, database, auth, atau fitur. Awal sesi: re-run Lighthouse live = **skor 81** (build `fea4fb6` sudah ter-deploy, dikonfirmasi `curl` aset `app-DMVKJhGZ.js` → 200).
+- **Akar masalah (dibuktikan, bukan asumsi):** document root domain **bukan** `~/ray-code/public`, melainkan `~/public_html` — dua salinan terpisah (`Panduan_Deploy_Raycode.md:12` menyatakan ini sendiri). `deploy.sh` lama hanya menyalin `public/build/assets` + `public/build/manifest.json`. File non-build di `public/` pernah muncul di domain hanya karena upload manual pada deploy 15–16 Okt.
+  - Bukti penyimpangan dua lokasi: `favicon.png` live 1.672.209 B vs repo 1.064 B; `robots.txt` live 104 B vs repo 102 B.
+  - Bukti spesifik: `ray.png` live 200 (311.855 B = identik repo) → yang "sempat berhasil"; `ray-logo.png` (18.676 B), `ray-watermark.webp` (46.222 B), `RAYCODE.png` (2.269.924 B) live **404** → `git log --diff-filter=A` menunjukkan ketiganya baru ditambahkan commit `fea4fb6` (23 Okt) dan tidak pernah tersalin.
+  - Navbar tidak salah path: `PublicLayout.tsx:18` `src="/ray-logo.png?v=1"` dengan `alt="Raycode"` → saat 404 browser menampilkan teks alt, persis gejala "navbar hanya teks Raycode". Pemakai lain: `AdminLayout.tsx:169`, `Error.tsx:208`, `Home.tsx:1734/1790/1876`; watermark `PublicLayout.tsx:403`.
+  - Bukan soal Git/ignore: `git ls-files` → ketiganya `tracked=yes`, `git check-ignore` → `ignored=no`. `.github/workflows` memang tidak ada (dihapus 16 Okt karena SSH hosting diblokir), tidak ada rsync lain.
+- **File diubah:**
+  - `deploy.sh` — langkah baru **3/6 "Sinkronkan aset statis"**: glob `*.png *.webp *.jpg *.jpeg *.gif *.svg *.ico robots.txt` di root `public/` + seluruh `public/images/`, memakai `cp -f` (nama tidak ber-hash → harus boleh ditimpa agar penggantian logo ter-deploy). `index.php`, `.htaccess`, `storage`, `build.zip|rar` sengaja tidak tersentuh. Backup `~/raycode-deploy-backup/<timestamp>/` dibuat **hanya** bila isi docroot berbeda dari repo (`cmp -s`). Nomor langkah 1/5→1/6.
+  - `Panduan_Deploy_Raycode.md` — §5C baru (latar belakang + snippet manual setara + verifikasi `curl`/`cmp` 5C), checklist §8 +2 poin, catatan jangka panjang diperbarui dengan contoh deviasi `favicon.png`.
+- **Keputusan:**
+  - `deploy.sh` dipecah: build pakai `cp -an` (aman, ber-hash, jangan menimpa), aset statis pakai `cp -f` (nama tetap, wajib menimpa). Konsolidasi ke rsync dihindari — `rsync` tidak dijamin ada di shared hosting cPanel.
+  - Backup selektif (`cmp -s`) supaya direktori backup tidak membesar di setiap deploy cron (cron jalan tiap 5 menit).
+  - Aset statis ikut dari repo sebagai satu-satunya sumber kebenaran; upload manual di docroot dianggap penyimpangan.
+  - `RAYCODE.png` 2,27 MB ikut tersinkron — **opsi 1(a) dipilih user**, untuk konsistensi proses deploy; tidak ada file baru/desain diubah.
+- **Temuan teknis penting (dibuktikan dengan test `cp` nyata):** `cp -f public/images/. dest/` **GAGAL** `omitting directory` (exit 1) karena `cp` pada direktori butuh rekursif; `cp -an` pada `public/build/assets/.` selama ini lolos karena `-a` sudah menyiratkan `-r`. Loop statis memakai `if [ -f ]` (bukan `[ -f ] && cmd`) agar aman dengan `set -e` saat glob tidak match.
+- **Perintah test + hasil aktual:**
+  ```powershell
+  bash -n deploy.sh                                 # OK
+  bash -n auto-deploy.sh                            # OK
+  # dry-run dengan PUBLIC_HTML_DIR sandbox + git/cp-build/artisan di-stub:
+  #   21 file disalin (RAYCODE.png, apple-touch-icon.png/svg, favicon-16x16/32x32, favicon.ico,
+  #   favicon.png, logo.svg, ray-logo.png, ray.png, ray-watermark.webp, robots.txt, images/* 5 file)
+  #   2 backup: favicon.png + robots.txt (isi backup = versi lama docroot, diverifikasi cmp)
+  #   EXIT=0; index.php & .htaccess tetap utuh; hot/storage/build.zip/build.rar TIDAK ikut
+  #   deploy ke-2: 0 backup baru (idempoten, direktori backup tidak membesar)
+  #   edge case: images/ tidak ada di docroot -> dibuat, exit 0; glob no-match -> exit 0
+  # snippet manual 5C diverifikasi terpisah -> semua byte IDENTIK dengan repo
+  php artisan test --compact                        # Tests: 1 skipped, 64 passed (251 assertions) Duration 80.70s
+  ```
+- **Belum dikerjakan (butuh Terminal cPanel, SSH dar lokal diblokir):** `cd ~/ray-code && git pull --ff-only && bash deploy.sh`, lalu verifikasi `curl -sI https://raycode.my.id/ray-logo.png` harus 200.
+- **Unresolved:**
+  - **Lingkungan lokal rusak, bukan akibat perubahan ini:** `C:\xampp\php\php.ini` hilang → `php -i` = `Loaded Configuration File => (none)`, `mbstring`/`fileinfo`/`gd`/`curl`/`pdo_sqlite` tidak ter-load, `php artisan test` gagal total. Test di atas baru jalan dengan `PHPRC` menunjuk ini sementara (extension_dir `C:/xampp/php/ext`). `intl`, `sqlite3`, `zip` tidak tersedia sebagai DLL. Perlu dipulihkan (`php.ini` dari `php.ini-production` + aktifkan extension) agar `php artisan test`/`pint` jalan normal lagi.
+  - `favicon.png` docroot (1,67 MB) akan ditimpa versi repo (1 KB) pada deploy berikutnya — tidak dirujuk kode, tapi cek dulu apakah ada tempat lain yang memakai URL itu.
+  - `robots.txt` statis di docroot **menutupi** route Laravel `routes/web.php:54` — perubahan robots dari kode tidak pernah berlaku. Di luar scope, belum diputuskan.
+  - `public/hot` (21 B) masih ada di lokal — jangan sampai ikut ter-commit (sudah ter-gitignore).
+  - Optimasi perf lanjutannya (font self-host, long task `initRevealEngine`, `config:cache` di deploy) belum dikerjakan; skor 81 belum diurut item mana yang tersisa.
+
+---
+
 ## 2026-10-23 (lanjutan) — Implementasi optimasi performa homepage (tanpa redesign)
 
 - **Fokus:** Menindaklanjuti audit performa: lazy-load Snap, lepas framer-motion dari homepage, optimasi logo/favicon/watermark, dan hilangkan delay LCP pada H1 hero. Tidak ada perubahan layout/visual.

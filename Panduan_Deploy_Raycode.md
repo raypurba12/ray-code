@@ -163,6 +163,31 @@ Untuk nama aset Vite yang memiliki hash, file baru biasanya memiliki nama baru. 
 
 **Penting:** `cp -an` tidak akan memperbarui file lama bernama sama. Jika suatu hari build menghasilkan nama file yang sama dengan konten berubah, lakukan backup dan penyalinan terkontrol untuk file tersebut.
 
+### 5C. Aset statis non-build (logo, ikon, gambar) — sejak 24 Oktober 2026
+
+File di root `public/` selain `build/` (logo navbar, favicon, watermark, `images/`, `robots.txt`) **tidak ikut tersalin oleh langkah 5B**. Sebelum 24 Oktober, file-file ini ada di `~/public_html` hanya karena pernah diupload manual pada deploy 15–16 Oktober, sehingga aset yang baru ditambahkan di repo tidak pernah muncul di domain (mis. `ray-logo.png` → 404, navbar hanya menampilkan teks alt "Raycode").
+
+`deploy.sh` kini menyalinnya otomatis: pola `*.png *.webp *.jpg *.jpeg *.gif *.svg *.ico robots.txt` di root `public/` plus seluruh isi `public/images/`. Berbeda dengan aset build, file-file ini **boleh ditimpa** (`cp -f`) karena namanya tidak ber-hash, sehingga penggantian logo ikut ter-deploy. `index.php`, `.htaccess`, `storage`, dan `build.zip|rar` sengaja tidak disentuh.
+
+Jika isi file di docroot berbeda dari repo, versi docroot dibackup lebih dulu ke `~/raycode-deploy-backup/<YYYYMMDD-HHMMSS>/` sebelum ditimpa. Backup hanya dibuat saat benar-benar ada perbedaan, jadi direktori ini tidak membesar pada deploy berulang.
+
+Langkah manual setara (untuk deploy di luar `deploy.sh` atau verifikasi):
+
+```bash
+cd ~/ray-code
+for f in public/*.png public/*.webp public/*.jpg public/*.jpeg public/*.gif public/*.svg public/*.ico public/robots.txt; do
+  [ -f "$f" ] && cp -f "$f" ~/public_html/"${f#public/}"
+done
+mkdir -p ~/public_html/images && cp -af public/images/. ~/public_html/images/
+```
+
+Verifikasi dari komputer lokal (tanpa SSH):
+
+```bash
+curl -sI https://raycode.my.id/ray-logo.png | head -1     # harus 200
+cmp -s <(curl -s https://raycode.my.id/ray-logo.png) public/ray-logo.png && echo "byte identik"
+```
+
 ---
 
 ## 6. Backend Laravel — jalankan hanya bila relevan
@@ -239,6 +264,8 @@ Target: `200` untuk JS dan CSS. Jika `404`, jangan langsung mengubah kode aplika
 - [ ] `git pull --ff-only` berhasil di hosting.
 - [ ] Aset baru tersalin ke `public_html/build/assets` (otomatis oleh `deploy.sh`, atau langkah manual 5).
 - [ ] Manifest di `public_html/build/manifest.json` cocok dengan build terbaru.
+- [ ] Aset statis non-build (logo, ikon, `images/`, `robots.txt`) tersalin ke `public_html` (langkah 5C) — cek `curl -sI https://raycode.my.id/ray-logo.png` = `200`.
+- [ ] `index.php` dan `.htaccess` di `public_html` tidak berubah.
 - [ ] URL JS/CSS mengembalikan HTTP 200.
 - [ ] Website dan fitur terkait lolos uji browser.
 
@@ -246,6 +273,8 @@ Target: `200` untuk JS dan CSS. Jika `404`, jangan langsung mengubah kode aplika
 
 ## Catatan penting untuk perbaikan deploy jangka panjang
 
-Saat ini ada dua lokasi publik (`~/ray-code/public` dan `~/public_html`) yang tidak otomatis tersinkron. Sejak 23 Oktober 2026, `deploy.sh` sudah menyalin `public/build/assets` dan `manifest.json` ke `~/public_html/build` setiap deploy, sehingga risiko HTML meminta aset baru yang belum ada di folder publik sudah ditutup untuk alur deploy normal. Namun dua lokasi ini tetap bisa berbeda jika ada deploy di luar `deploy.sh`, jadi verifikasi langkah 7 tetap wajib.
+Saat ini ada dua lokasi publik (`~/ray-code/public` dan `~/public_html`) yang tidak otomatis tersinkron. Sejak 23 Oktober 2026, `deploy.sh` sudah menyalin `public/build/assets` dan `manifest.json` ke `~/public_html/build` setiap deploy, sehingga risiko HTML meminta aset baru yang belum ada di folder publik sudah ditutup untuk alur deploy normal. Sejak 24 Oktober 2026, langkah 5C menutup celah yang sama untuk aset statis non-build (logo/ikon/gambar) — penyebab `ray-logo.png` 404 di navbar production sementara `ray.png` tetap hidup hanya karena pernah diupload manual.
+
+Dua lokasi ini tetap bisa berbeda jika ada deploy di luar `deploy.sh` atau perubahan manual di `public_html`, jadi verifikasi langkah 7 tetap wajib. Contoh penyimpangan yang masih ada: `favicon.png` di docroot pernah berukuran 1,67 MB padahal versi repo 1 KB (file tersebut tidak dirujuk kode, dan kini ditimpa oleh versi repo dengan backup otomatis).
 
 Solusi jangka panjang yang lebih rapi adalah menjadikan document root domain langsung mengarah ke `~/ray-code/public`, jika hosting mengizinkan, atau membuat prosedur deploy otomatis yang menyalin **seluruh build secara konsisten dan atomik** ke `public_html`. Jangan mengubah document root tanpa memeriksa dukungan hosting dan konfigurasi Laravel terlebih dahulu.
