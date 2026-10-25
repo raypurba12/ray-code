@@ -14,6 +14,33 @@ Template entri:
 
 ---
 
+## 2026-10-25 (lanjutan) — PERF A2: optimasi `initRevealEngine` (rect reads + debounce MutationObserver)
+
+- **Fokus:** Menghapus akar long task `initRevealEngine` yang ditemukan di audit A2: `inViewport()` dipanggil ratusan kali saat React merender karena setiap batch mutasi memicu `checkPending()`, dan read/write class bergantian memaksa layout sinkron per elemen.
+- **File diubah:** `resources/js/app.tsx` (hanya `initRevealEngine`), `public/build/*` hasil `npm run build` (`app-B44cGVSN.js`, `Home-wZ0SSDzK.js`, `app-CtEt0Mcp.css`), dokumen ini + `PROJECT_STATUS.md`. Tidak ada perubahan backend/behavior reveal.
+- **Keputusan:**
+  1. `checkPending()` early-return saat `pending` kosong, membuang node `!isConnected`, lalu **mengumpulkan node in-viewport dulu (read) dan baru menulis class (write)** — tidak ada read-write interleaving.
+  2. MutationObserver tidak lagi memanggil `onViewportChange()` per batch; digabung lewat `scheduleMutationCheck()` (`setTimeout` 120 ms, hanya sekali) dan hanya dijadwalkan bila ada `HTMLElement` yang ditambahkan.
+  3. `reveal()` dibuat idempoten (`if (!pending.delete(el)) return`) agar IO + fallback tidak menulis class berulang.
+  4. Semua fail-safe dipertahankan: IO `rootMargin 0px 0px -5% 0px`/`threshold 0.08`, listener scroll/resize/load/pageshow, watchdog 2,5 s + 6 s, early-return reduced-motion, `js-reveal`, dan re-scan `inertia:navigate`. H1 LCP tetap `priority` (tidak di-hide).
+- **Verifikasi browser (Chrome CDP, aset build produksi, server lokal :8124):** `getBoundingClientRect` diinstrumentasi lewat `Element.prototype`, dihitung selama load + 3 putaran scroll: **48** panggilan desktop 1440, **49** mobile 390, **136** saat `IntersectionObserver` sengaja dirusak. Audit lama di build live: **1.194 panggilan dalam 9 s** untuk 43 node. Reveal: desktop **21/21**, mobile **21/21**, broken-IO **21/21** (fallback tetap bekerja), reduced-motion `jsReveal=false` + konten opasitas penuh.
+- **A/B Lighthouse lokal (2 run tiap sisi, mobile, aset build):** sebelum skor **55/55**, TBT **250/220 ms**, FCP 4,9/5,6 s, LCP 7,4/7,3 s; sesudah skor **47/47**, TBT **480/490 ms**, FCP 5,5/4,9 s, LCP 7,3/7,4 s. **Tidak bisa disimpulkan naik/regresi:** task 610 ms pada run "sebelum" terjadi di 1.522 ms (sebelum FCP ~4,9 s) sehingga tidak masuk hitungan TBT, dan task 400 ms run "sesudah" muncul sebelum HTML selesai (server lokal ~2,25 s) — TBT lokal didominasi vendor/React + variance server built-in. Bukti yang solid: rect reads turun ~96%.
+- **Test:** `php artisan test --compact` → **65 passed (264 assertions)**, 8,57 s. `npm run build` → sukses. `npx tsc --noEmit` → tidak ada error di `app.tsx` (error pre-existing di `ConfirmModal.tsx`, `ToastProvider.tsx`, `ui.tsx`, `Admin/Orders.tsx`).
+- **Unresolved:** dampak TBT/LCP live harus diukur ulang setelah commit + cron deploy (lokal tidak representatif); A4 unused JS; TTFB cold start 1,07–1,09 s.
+
+---
+
+## 2026-10-25 (lanjutan) — Verifikasi live setelah deploy `644857b`
+
+- **Fokus:** Memverifikasi dampak `config:cache` + `route:cache` di produksi setelah user push/deploy commit `644857b` (`minggu`) yang memuat `deploy.sh` 7/7 + build `Home-CyEmfl40.js`.
+- **Bukti deploy berjalan:** `git rev-parse HEAD == origin/main == 644857b`; `https://raycode.my.id/build/assets/Home-CyEmfl40.js` → **200**, `Content-Length: 82207`, `Last-Modified: 2026-10-25 15:32:25 GMT`. Smoke test route: `/`, `/cara-pesan`, `/robots.txt`, `/login`, `/pantau-pesanan`, `/sitemap.xml`, `/services`, `/portfolio` → semua **200** (route cache tidak memecahkan closure route).
+- **TTFB curl (tanpa throttle, `Cache-Control: no-cache`):** request pertama setelah idle **1,07–1,09 s**, lalu 6–8 request berikutnya **0,21–0,25 s** secara konsisten. Pola ini menunjukkan cold start worker/OPcache hosting, bukan parsing config per request.
+- **Lighthouse live 12.8.2 (mobile, 2 run):** skor **69** dan **74**; TTFB **240 ms** vs **990 ms** (run kedua tertangkap cold start); FCP 3,0 s / 2,9 s; LCP 3,8 s (elemen LCP = `<h1>` hero, bukan gambar/font); TBT **470 ms** / **320 ms**; CLS 0,001; 23 request / 353 KiB; `render-blocking-resources` kosong; 3 request Google Fonts. Pre-deploy: skor 68, TTFB 1,15 s, TBT 1.040 ms.
+- **Kesimpulan:** TTFB warm membaik signifikan, tetapi **tidak bisa diklaim sebagai efek murni cache** karena build juga berubah (A1/A5/A7) dan TTFB Lighthouse sangat bervariasi (cold start). FCP/LCP tidak membaik di dua run ini — bottleneck-nya tetap render CSR + main thread (`bootup 1,1 s`, LCP H1). Cache file di server tidak bisa diverifikasi via HTTP; cek `tail -n 20 ~/raycode-deploy.log` untuk memastikan langkah 7/7 mencetak `Configuration cached successfully` + `Routes cached successfully`.
+- **Unresolved:** verifikasi log deploy (di luar akses SSH); mitigasi cold-start 1,1 s per request pertama (opsional: warm-up cron/OPcache hosting); fix A2 `initRevealEngine`; A4 unused JS; Lighthouse live masih variance (69/74).
+
+---
+
 ## 2026-10-25 (lanjutan) — TTFB: `config:cache` + `route:cache` di `deploy.sh`
 
 - **Fokus:** Menjalankan `config:cache` + `route:cache` dan memasukkannya ke pipeline deploy agar request produksi tidak mem-parsing `.env` dan mendaftarkan ulang 110 route setiap kali.

@@ -43,8 +43,8 @@ function initRevealEngine(): void {
     let io: IntersectionObserver | null = null;
 
     const reveal = (el: HTMLElement) => {
+        if (!pending.delete(el)) return;
         el.classList.add('reveal', 'is-visible');
-        pending.delete(el);
         revealedCount++;
         io?.unobserve(el);
     };
@@ -55,9 +55,23 @@ function initRevealEngine(): void {
     };
 
     const checkPending = () => {
+        if (pending.size === 0) return;
+
+        // Read every rect first, then write classes. Interleaving reads with
+        // class changes forces a synchronous layout for each element, which is
+        // what made the initial render expensive.
+        const entering: HTMLElement[] = [];
+
         for (const el of pending) {
-            if (inViewport(el)) reveal(el);
+            if (!el.isConnected) {
+                pending.delete(el);
+                io?.unobserve(el);
+                continue;
+            }
+            if (inViewport(el)) entering.push(el);
         }
+
+        for (const el of entering) reveal(el);
     };
 
     if (typeof IntersectionObserver !== 'undefined') {
@@ -102,6 +116,18 @@ function initRevealEngine(): void {
     window.addEventListener('load', onViewportChange);
     window.addEventListener('pageshow', onViewportChange);
 
+    // React commits the tree in many small batches. Checking after every batch
+    // forces layout hundreds of times during the initial render, so collapse
+    // the burst into one fallback check shortly after the DOM settles.
+    let mutationCheckTimer = 0;
+    const scheduleMutationCheck = () => {
+        if (mutationCheckTimer) return;
+        mutationCheckTimer = window.setTimeout(() => {
+            mutationCheckTimer = 0;
+            onViewportChange();
+        }, 120);
+    };
+
     // Watchdog: if the observer never delivered (broken/throttled), keep the
     // page usable by revealing everything that is on screen — and, if the
     // whole engine produced nothing at all, reveal all pending nodes.
@@ -113,9 +139,11 @@ function initRevealEngine(): void {
     }, 6000);
 
     new MutationObserver((mutations) => {
+        let added = false;
         for (const mutation of mutations) {
             mutation.addedNodes.forEach((node) => {
                 if (!(node instanceof HTMLElement)) return;
+                added = true;
                 if (node.matches('[data-reveal]') && !node.classList.contains('is-visible')) {
                     node.classList.add('reveal');
                     pending.add(node);
@@ -124,7 +152,7 @@ function initRevealEngine(): void {
                 if (node.querySelector?.('[data-reveal]')) observeAll(node);
             });
         }
-        onViewportChange();
+        if (added) scheduleMutationCheck();
     }).observe(document.body, { childList: true, subtree: true });
 
     // Inertia swaps page content without full reloads — re-scan after each visit.
