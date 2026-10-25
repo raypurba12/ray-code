@@ -1529,9 +1529,11 @@ function FaqSection({ faqs, plans, eyebrow, heading, footerText }: { faqs: Faq[]
                         <div className="pointer-events-none absolute -bottom-10 -left-10 size-56 rounded-full bg-sky-400/10 blur-3xl dark:bg-sky-400/10" aria-hidden />
                         <img
                             src="/images/raycode-faq.webp"
+                            srcSet="/images/raycode-faq-600.webp 600w, /images/raycode-faq.webp 900w"
+                            sizes="(min-width: 1024px) 560px, 100vw"
                             alt="Raycode — Build Develop Create"
                             width={900}
-                            height={640}
+                            height={600}
                             loading="lazy"
                             decoding="async"
                             className="relative aspect-[4/3] w-full rounded-[1.25rem] object-cover object-center"

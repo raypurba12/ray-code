@@ -2,10 +2,10 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-echo "==> 1/6 Pull kode terbaru (termasuk build frontend)"
+echo "==> 1/7 Pull kode terbaru (termasuk build frontend)"
 git pull --ff-only
 
-echo "==> 2/6 Sinkronkan aset build ke folder publik"
+echo "==> 2/7 Sinkronkan aset build ke folder publik"
 PUBLIC_HTML_DIR="${PUBLIC_HTML_DIR:-$HOME/public_html}"
 if [ ! -f public/build/manifest.json ]; then
   echo "ERROR: public/build/manifest.json tidak ditemukan. Deploy dibatalkan." >&2
@@ -18,7 +18,7 @@ cp -f public/build/manifest.json "$PUBLIC_HTML_DIR/build/manifest.json"
 # Domain melayani file dari public_html, sedangkan repo ada di folder proyek, jadi
 # aset non-build (logo/ikon/gambar) harus disalin eksplisit. Hanya file statis
 # ber-ekstensi gambar + robots.txt; index.php, .htaccess, dan storage tidak disentuh.
-echo "==> 3/6 Sinkronkan aset statis (logo, ikon, gambar) ke folder publik"
+echo "==> 3/7 Sinkronkan aset statis (logo, ikon, gambar) ke folder publik"
 STATIC_BACKUP_DIR="$HOME/raycode-deploy-backup/$(date +%Y%m%d-%H%M%S)"
 sync_static() {
   local src="$1" rel dest backup_dir
@@ -47,14 +47,20 @@ for src in public/images/*; do
   fi
 done
 
-echo "==> 4/6 Hapus sisa dev-server (kalau ada)"
+echo "==> 4/7 Hapus sisa dev-server (kalau ada)"
 rm -f public/hot
 
-echo "==> 5/6 Migrasi database"
+echo "==> 5/7 Migrasi database"
 php artisan migrate --force
 
-echo "==> 6/6 Bersihkan cache"
+echo "==> 6/7 Bersihkan cache"
 php artisan optimize:clear
+
+# Cache dibangun ulang tepat setelah clear agar setiap request tidak perlu
+# mem-parsing .env dan mendaftarkan seluruh route — memangkas waktu bootstrap/TTFB.
+echo "==> 7/7 Cache config + route"
+php artisan config:cache
+php artisan route:cache
 
 echo ""
 echo "==> SELESAI. Buka https://raycode.my.id lalu hard refresh (Ctrl+Shift+R)"

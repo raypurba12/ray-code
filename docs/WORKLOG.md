@@ -14,6 +14,78 @@ Template entri:
 
 ---
 
+## 2026-10-25 (lanjutan) — TTFB: `config:cache` + `route:cache` di `deploy.sh`
+
+- **Fokus:** Menjalankan `config:cache` + `route:cache` dan memasukkannya ke pipeline deploy agar request produksi tidak mem-parsing `.env` dan mendaftarkan ulang 110 route setiap kali.
+- **File diubah:** `deploy.sh` — langkah 6/7 `optimize:clear`, langkah baru 7/7 `config:cache` + `route:cache`; penomoran langkah 1–5 diubah dari `/6` ke `/7`. Tidak ada kode aplikasi yang diubah.
+- **Keputusan:** `optimize:clear` tetap dijalankan lebih dulu agar deploy selalu bersih, lalu cache dibangun ulang. Closure route (`track.lookup`, `cara-pesan`, `robots.txt`) **bukan blocker** — Laravel 12 men-serialisasi closure via `laravel/serializable-closure`; `route:list` tetap 110 route. Tidak perlu refactor ke controller.
+- **Perintah + hasil aktual:**
+  - `php artisan config:cache` → `Configuration cached successfully`; `php artisan route:cache` → `Routes cached successfully`.
+  - `bash -n deploy.sh` → OK.
+  - Simulasi urutan produksi `optimize:clear → config:cache → route:cache` → `php artisan about --only=cache`: Config **CACHED**, Routes **CACHED**; HTTP `GET /login` dengan cache aktif → **200**.
+  - `php artisan test --compact` (setelah `optimize:clear`) → **65 passed (264 assertions)**, 11,03 s.
+- **Catatan operasional:** `config:cache` mengunci nilai `.env`, jadi test lokal saat cache aktif memakai config `local` (bukan `testing`) dan POST berakhir 419 CSRF — jalankan `php artisan optimize:clear` sebelum test lokal. Saat investigasi, dev server `php artisan serve` sisa sesi sebelumnya menahan `bootstrap/cache/config.php` yang sudah dihapus (delete-pending), sehingga PHP tetap memuat config lama; menghentikan proses PHP itu menghilangkan gejala.
+- **Dampak terukur:** TTFB lokal via built-in server tidak representatif (uncached ±48 ms vs cached ±45 ms, noise sampai 94 ms) karena overhead server/kompilasi CLI mendominasi. Penghematan hanya pada porsi bootstrap (parsing config + registrasi route); TTFB live 1,15 s juga dipengaruhi jaringan, PHP-FPM, DB, dan render. Ukur ulang live setelah push + cron deploy.
+- **Unresolved:** push/deploy belum dilakukan (menunggu konfirmasi); Lighthouse live belum diukur ulang; fix A2 `initRevealEngine` masih pending; A4 unused JS pending.
+
+---
+
+## 2026-10-25 (lanjutan) — Audit A2: font, Snap, dan long task homepage
+
+- **Fokus:** Audit read-only A2 pada HEAD `edeb2ff` + build `Home-CyEmfl40.js`; tidak ada kode aplikasi yang diubah.
+- **Temuan font (resolved):** `app.blade.php:15-28` — preconnect `fonts.googleapis/gstatic`, CSS Google Fonts dimuat async (`media="print"` + `onload`), `display=swap`; Lighthouse: `render-blocking-resources` kosong, `font-display` kosong, CLS 0.001. Font yang benar-benar diunduh: Inter 48.983 B + JetBrains Mono 21.935 B (~72 KB), main-thread 6 ms. Tidak ada `@font-face` lokal. Sisa opsional: self-host WOFF2 yang dipakai + preload 1–2 weight; dampak ke TBT kecil.
+- **Temuan Snap (resolved):** tidak ada `<script snap.js>` global di `app.blade.php`; `InvoiceShow.tsx:26-32` `loadSnap()` on-demand + dedupe/retry, dipanggil hanya saat invoice unpaid / klik bayar (`:88,113,131`); TrackOrder memakai vtweb redirect. Lighthouse homepage: 0 request Snap; third-party hanya Google Fonts.
+- **Temuan long task (masih terbuka):**
+  - Live Lighthouse 12.8.2 mobile `https://raycode.my.id/` (build lama `app-DMVKJhGZ.js`): skor 68; FCP 1,8 s; LCP 3,0 s (TTFB 1,15 s / 38%, render delay 1,87 s); TBT 1.040 ms; total 353 KiB.
+  - Long task: `app-DMVKJhGZ.js` 956 ms; `vendor-DUmJHVK2.js` 260+223+170+52 = 705 ms; `Home-C-4kylzH.js` 153+81+61 = 295 ms.
+  - CPU profile lokal (unthrottled, build HEAD `app-CORJ6UrU.js`): fungsi `l` = `inViewport()` (`app.tsx:52-55`) **843 ms self-time**; **1.194 panggilan `getBoundingClientRect`** dalam 9 s pertama untuk 43 node `[data-reveal]` (2.015 elemen DOM). Penyebab: `MutationObserver` memanggil `onViewportChange()` pada setiap batch mutasi saat React merender; `checkPending()` membaca rect dan menulis class bergantian → forced layout berulang. Ini mengonfirmasi catatan 2026-10-24 soal long task `initRevealEngine`.
+  - H1 LCP sudah `priority` (`Home.tsx:322`, `Reveal.tsx:27-29`) — delay LCP bukan animasi reveal, melainkan CSR + TTFB.
+- **Rekomendasi (belum diterapkan):** di `initRevealEngine`, (1) debounce fallback MutationObserver (mis. `setTimeout` ~120 ms + rAF) alih-alih `m()` langsung tiap batch; (2) `checkPending()` kumpulkan elemen yang in-viewport dulu, baru tambah class (hindari read-write interleaving); (3) `if (pending.size === 0) return`. Pertahankan fallback scroll/resize/load/watchdog agar hardening mobile tidak hilang. Perkiraan: menghapus mayoritas 1.194 rect reads dan long task 486 ms; perlu A/B Lighthouse + uji emulasi IO rusak.
+- **Perintah + hasil aktual:** `lighthouse ... --only-categories=performance` lokal (build produksi; `public/hot` di-rename sementara) → skor 46, TBT 560 ms; live → skor 68, TBT 1.040 ms; CDP profiling + inject counter `getBoundingClientRect` → 1.194 calls; tidak ada perubahan kode.
+- **Unresolved:** fix reveal belum diimplementasi; live masih build lama (HEAD + build baru belum deploy); TTFB live 1,15 s → pertimbangkan `config:cache`/`route:cache`/`view:cache` + OPcache di `deploy.sh`; A4 unused vendor 47 KB (57% live) masih pending; skor Lighthouse live bervariasi (68 vs 81) — ukur ulang setelah deploy.
+
+---
+
+## 2026-10-25 — PERF A1/A5/A7: verifikasi payload homepage + varian responsif `raycode-faq`
+
+- **Fokus:** Menuntaskan A1 (payload gambar) + A7 (video 5,3 MB) tanpa redesign. Sebagian besar ternyata sudah ada di HEAD; sesi ini memisahkan mana yang benar-benar selesai vs catatan dokumen yang stale, lalu menutup sisa image delivery (A5).
+- **Verifikasi aktual (bukan asumsi):**
+  - `public/images` hanya berisi 5 WebP: `hero-800.webp` 49.004 B, `hero-woman.webp` 16.740 B, `pp-800.webp` 69.518 B, `pp.webp` 104.360 B, `raycode-faq.webp` 147.478 B. Tiga file besar yang dicatat audit 2026-10-11 (hero-woman.jpeg 2.060 kB, pp.png 1.305 kB, hero-woman.png 503 kB) **sudah tidak ada**.
+  - Default hero `app/Http/Controllers/Admin/HomepageController.php:167` = `/images/pp-800.webp` (bukan `pp.png`).
+  - `resources/js/Pages/Public/Home.tsx:1080` video Home sudah `preload="none"` + `poster` + play hanya saat hover; `preload="none"` sudah ada sejak commit `bc8fca2`.
+  - `php artisan tinker` → 3 portfolio dengan video, **semua `thumbnail_url = NULL`** (Waroeng, Test Save, aa) → `poster` tidak pernah terpasang; placeholder gradient + badge "Preview" yang tampil.
+- **Baseline Chrome headless (sebelum perubahan):** netlog `--headless=new`, 1440×900, halaman lokal: **0 request `portfolio_videos`/`.mp4`**; gambar yang dimuat hanya `pp-800.webp`, `raycode-faq.webp` (147.478 B), `ray-logo.png` — tidak ada `pp.webp`, `RAYCODE.png`, `ray.png`.
+- **File diubah:**
+  - `resources/js/Pages/Public/Home.tsx` — gambar FAQ: `srcSet="/images/raycode-faq-600.webp 600w, /images/raycode-faq.webp 900w"`, `sizes="(min-width: 1024px) 560px, 100vw"`, `width={900} height={600}` (sebelumnya 640, tidak sesuai rasio asli 900×600).
+  - `public/images/raycode-faq-600.webp` — baru, 600×400, 69.654 B (sharp resize 600w, WebP quality 82, effort 6).
+  - `public/build/**` — hasil `npm run build` (Home-CyEmfl40.js 82,21 kB, app-CORJ6UrU.js 26,51 kB).
+  - `docs/PROJECT_STATUS.md`, `docs/WORKLOG.md`.
+- **Keputusan:**
+  - Pertahankan `raycode-faq.webp` 900w sebagai kandidat DPR2/layar besar; tambah 600w untuk kolom ~560 px dan mobile. Tidak menimpa aset lama.
+  - Tidak membuat poster video generik/palsu: poster harus berasal dari thumbnail konten; gap data `thumbnail_url` didokumentasikan, bukan ditutup dengan gambar yang menyesatkan.
+  - Tidak menambah defer `src` video: `preload="none"` sudah terbukti 0 request di Chrome (dev + build). Perubahan tambahan hanya menambah kompleksitas tanpa bukti manfaat.
+- **Perintah test + hasil aktual:**
+  ```text
+  php artisan tinker ...        -> 3 video, semua thumb=NULL
+  Chrome headless netlog (dev, 1440, sebelum perubahan)
+                                -> mp4: NONE; images: pp-800, raycode-faq, ray-logo
+  Chrome headless netlog (dev, 1440 & 390, setelah perubahan)
+                                -> images: pp-800.webp, raycode-faq-600.webp
+                                -> mp4: NONE
+  Chrome headless netlog (build produksi, public/hot di-rename sementara lalu dikembalikan, 1440)
+                                -> images: pp-800.webp, raycode-faq-600.webp; mp4: NONE
+  npm run build                 -> sukses 17,69s; Home-CyEmfl40.js 82,21 kB
+  php artisan test --compact    -> 65 passed (264 assertions), 11,25s
+  ```
+- **Unresolved:**
+  - Poster video tidak ada karena `thumbnail_url` NULL di 3 portfolio; solusi berkelanjutan butuh upload thumbnail di admin atau generate poster saat upload (ffmpeg di shared hosting belum dipastikan) — di luar scope A1/A7.
+  - Hover/play video tetap mengunduh file apa adanya (5,3 MB di dev); belum ada kompresi/transcoding video.
+  - `public/build` dan docs berubah di working tree, belum di-commit/push; deploy produksi baru ikut setelah commit + cron `auto-deploy.sh`.
+  - Lighthouse belum di-run ulang; jangan klaim skor naik sebelum diukur.
+  - A2 (font/`snap.js`/long task) dan A4 (unused JS) masih pending.
+
+---
+
 ## 2026-10-24 — Audit alur deploy logo (navbar production tanpa gambar) + perluas `deploy.sh` ke aset statis
 
 - **Fokus:** Audit deployment `ray.png`/`ray-logo.png` dari lokal sampai production tanpa mengubah desain, database, auth, atau fitur. Awal sesi: re-run Lighthouse live = **skor 81** (build `fea4fb6` sudah ter-deploy, dikonfirmasi `curl` aset `app-DMVKJhGZ.js` → 200).
@@ -45,13 +117,56 @@ Template entri:
   # snippet manual 5C diverifikasi terpisah -> semua byte IDENTIK dengan repo
   php artisan test --compact                        # Tests: 1 skipped, 64 passed (251 assertions) Duration 80.70s
   ```
-- **Belum dikerjakan (butuh Terminal cPanel, SSH dar lokal diblokir):** `cd ~/ray-code && git pull --ff-only && bash deploy.sh`, lalu verifikasi `curl -sI https://raycode.my.id/ray-logo.png` harus 200.
+- **Deploy production: SUDAH JALAN OTOMATIS (VERIFIED 2026-10-24, tanpa Terminal cPanel).** Commit `edeb2ff` (`deploy.sh` + `Panduan_Deploy_Raycode.md`) ter-push, lalu cron `auto-deploy.sh` (5 menit) mendeteksi `HEAD != origin/main` dan menjalankan `deploy.sh` langkah 3/6. Verifikasi live dari lokal:
+  ```text
+  curl https://raycode.my.id/ray-logo.png        -> 200, 18.676 B, md5 dd857b4f... = md5 public/ray-logo.png (IDENTIK)
+  curl https://raycode.my.id/ray.png             -> 200
+  curl "https://raycode.my.id/favicon.png?cb=1"  -> 200, 1.064 B  (versi repo; tanpa cache-buster masih 1.672.209 B = cache ModPagespeed lama)
+  curl https://raycode.my.id/robots.txt          -> 200, 102 B   (versi repo menggantikan 104 B docroot lama)
+  favicon.ico / -32x32 / -16x16 / apple-touch-icon.png -> semuanya 200
+  ```
+  Navbar production kini menampilkan gambar logo (sumber kebenaran = repo, bukan upload manual lagi).
 - **Unresolved:**
-  - **Lingkungan lokal rusak, bukan akibat perubahan ini:** `C:\xampp\php\php.ini` hilang → `php -i` = `Loaded Configuration File => (none)`, `mbstring`/`fileinfo`/`gd`/`curl`/`pdo_sqlite` tidak ter-load, `php artisan test` gagal total. Test di atas baru jalan dengan `PHPRC` menunjuk ini sementara (extension_dir `C:/xampp/php/ext`). `intl`, `sqlite3`, `zip` tidak tersedia sebagai DLL. Perlu dipulihkan (`php.ini` dari `php.ini-production` + aktifkan extension) agar `php artisan test`/`pint` jalan normal lagi.
-  - `favicon.png` docroot (1,67 MB) akan ditimpa versi repo (1 KB) pada deploy berikutnya — tidak dirujuk kode, tapi cek dulu apakah ada tempat lain yang memakai URL itu.
-  - `robots.txt` statis di docroot **menutupi** route Laravel `routes/web.php:54` — perubahan robots dari kode tidak pernah berlaku. Di luar scope, belum diputuskan.
+  - ~~Lingkungan lokal: `C:\xampp\php\php.ini` hilang~~ — **KOREKSI diagnoses di sesi yang sama (lihat entri berikutnya):** XAMPP memang sudah ditinggalkan user, akar masalahnya Laragon tidak terdaftar di PATH sementara PATH Machine masih menunjuk PHP XAMPP yang cacat.
+  - ~~`favicon.png` docroot (1,67 MB) akan ditimpa versi repo (1 KB)~~ — **SUDAH TERJADI & AMAN:** grep `favicon` di `resources/`, `app/`, `routes/` hanya menemukan `/favicon.ico`, `/favicon-32x32.png`, `/favicon-16x16.png` (`app.blade.php:11-13`); `favicon.png` tidak dirujuk kode manapun, jadi penimpaannya tidak berdampak. Versi 1,67 MB masih bisa disajikan ModPagespeed dari cache lama sampai cache purge / TTL habis — hard refresh mengganti versi 1.064 B.
+  - Backup selektif di server terbentuk untuk file yang dulu deviasi (`favicon.png`, `robots.txt`) di `~/raycode-deploy-backup/<timestamp>/`. Ukuran direktori ini belum dicek dari lokal (cron jalan tiap 5 menit; backup hanya dibuat saat `cmp -s` berbeda, jadi setelah deploy pertama seharusnya tidak bertambah).
+  - `robots.txt` statis di docroot **masih menutupi** route Laravel `routes/web.php:54` — perubahan robots dari kode tidak pernah berlaku. Sekarang yang terserve versi repo (102 B) yang `Sitemap:` -nya menunjuk `https://raycode.dev/sitemap.xml`, bukan `raycode.my.id`. Di luar scope, belum diputuskan.
   - `public/hot` (21 B) masih ada di lokal — jangan sampai ikut ter-commit (sudah ter-gitignore).
   - Optimasi perf lanjutannya (font self-host, long task `initRevealEngine`, `config:cache` di deploy) belum dikerjakan; skor 81 belum diurut item mana yang tersisa.
+
+---
+
+## 2026-10-24 (lanjutan) — Perbaikan lingkungan dev: `extension=zip` + PATH Machine dibersihkan dari XAMPP
+
+- **Fokus:** Menuntaskan blocker "test tidak bisa jalan" yang tadi dikira kerusakan XAMPP, lalu mengaktifkan ZIP agar test yang selama ini skip bisa dijalankan.
+- **Diagnosis sebenarnya (dibuktikan, mengoreksi entri di atas):** user sudah pindah ke **Laragon**; MySQL yang melayani dev DB pun milik Laragon (`C:\laragon\bin\mysql\mysql-8.4.3-winx64\bin\mysqld.exe`, PID 7840, `php artisan migrate:status` normal). Masalahnya: **Laragon tidak ada di PATH sama sekali**, sedangkan PATH Machine masih memuat `C:\xampp` (#13), `C:\xampp\php` (#15), `D:\xampp\php` (#16) — dua di antaranya entri mati (`D:\xampp\php` dan `C:\Users\ASUS\Downloads\php-8.2.12` sudah tidak ada di disk). Terminal Laragon lancar karena Laragon menyuntik PATH sendiri di jendelanya; shell non-login (agent, cron, editor) jatuh ke `C:\xampp\php\php.exe` 8.2.12 yang `Loaded Configuration File => (none)`.
+- **Fakta penting tentang urutan PATH:** nilai merged = **Machine dulu, baru User di-append** (dibuktikan: entri User pertama `.qoder\entry` muncul di posisi 43, `xampp` di 21-24). Artinya menambah Laragon ke User PATH tidak akan pernah mengalahkan `C:\xampp\php` — perubahan wajib di level Machine (perlu admin).
+- **Perubahan 1 — `C:\Laragon\bin\php\php-8.3.28-Win32-vs16-x64\php.ini`:** baris 832 `;extension=zip` → `extension=zip`. Backup `php.ini.bak-20261024` dibuat sebelum edit. Verifikasi: `php -m` memuat `zip`, `class_exists("ZipArchive")` = ADA.
+- **Perubahan 2 — PATH Machine:** skrip `C:\Users\ASUS\path-fix-20261024\remove-xampp-from-machine-path.ps1` (+ wrapper `run-and-log.ps1`, `launch-elevated.ps1`, log `run.log`). Menghapus 3 entri XAMPP persis (bukan substring) dan mem-prepend `C:\laragon\bin\php\php-8.3.28-Win32-vs16-x64` + `C:\laragon\bin\mysql\mysql-8.4.3-winx64\bin` (versi dideteksi otomatis dari isi folder). Ditulis dengan `Set-ItemProperty -Type ExpandString` supaya tipe registry tidak berubah; **`setx` sengaja tidak dipakai** karena memotong nilai di 1024 karakter (Machine PATH 1128 karakter). Backup nilai mentah: `C:\Users\ASUS\path-backup-20261024-233255\MACHINE-PATH-RAW.txt`.
+- **Keputusan:**
+  - Preview dulu sebelum menulis (`-Preview` membuka registry read-only, tidak butuh admin) dan **diff** hasil vs nilai asli: perubahan persis `+2 Laragon, -3 XAMPP`, tidak ada entri lain yang tersentuh.
+  - `-Unique` pada penggabungan list dibatalkan setelah preview menunjukkan ia diam-diam menghapus 2 entri duplikat `cursor` yang tidak diminta — sekarang hanya entri Laragon yang dicek eksistensi, sisanya dibiarkan apa adanya.
+  - Eksekusi lewat `Start-Process -Verb RunAs` (dialog UAC ditekan user), bukan `reset`/hapus file. **Tidak ada satu file pun yang dihapus** — `C:\xampp\php` dan `C:\xampp` masih ada di disk, hanya keluar dari PATH.
+  - Entri rusak lain sengaja tidak dibersihkan (di luar instruksi): `C:\Users\ASUS\Downloads\php-8.2.12` (entri mati, masih di Machine #26 dan User), `\Program Files\Git\cmd` (Machine #22, kehilangan drive letter), `C:\Users\User\AppData\Local\Pub\Cache\bin` (#20, profil user lain).
+- **Perintah test + hasil aktual:**
+  ```powershell
+  # dengan PHP Laragon (sebelum zip aktif)
+  php artisan test --compact        # 1 skipped, 64 passed (251 assertions) 24,59s
+  # setelah extension=zip aktif
+  php artisan test --compact        # Tests: 65 passed (264 assertions) — test ZIP TrackOrderTest tidak skip lagi
+  php artisan test --compact        # via PATH baru, memanggil "php" polos: 65 passed (264 assertions) 36,21s
+  vendor\bin\pint --test            # FAIL 123 files, 1 style issue — pre-existing (migrasi 2026_10_13_150740_*, commit bc8fca2, tidak disentuh)
+  # verifikasi PATH dari proses baru (mensimulasi terminal baru)
+  Machine entries 33 | sisa xampp 0 | tipe registry ExpandString
+  php   -> C:\laragon\bin\php\php-8.3.28-Win32-vs16-x64\php.exe  (PHP 8.3.28)
+  mysql -> C:\laragon\bin\mysql\mysql-8.4.3-winx64\bin\mysql.exe
+  ```
+- **Catatan:** composer.json `require.php = ^8.2` → PHP 8.3.28 kompatibel. Shell sesi ini masih memakai PATH lama; terminal baru yang mendapat Laragon.
+- **Unresolved:**
+  - Perlu restart terminal/IDE agar PATH baru terpakai; `C:\xampp` tidak dihapus dari disk (tanya user dulu, dan `C:\xampp\mysql\data` sudah tidak ada jadi tidak ada DB lama yang perlu diselamatkan).
+  - Entri PATH rusak lain (Downloads php, `\Program Files\Git\cmd`, `C:\Users\User\...`) belum dibersihkan.
+  - ~~Perubahan `deploy.sh` + dokumen dari sesi audit logo masih belum di-commit~~ — **sudah commit `edeb2ff` dan push ke `origin/main`.**
+  - ~~Produksi: `bash deploy.sh` di cPanel masih menunggu (logo `ray-logo.png` masih 404 live)~~ — **cron `auto-deploy.sh` sudah menjalankannya; `ray-logo.png` live 200 dan byte-identik dengan repo (lihat entri audit logo).**
 
 ---
 
@@ -367,7 +482,7 @@ Template entri:
   .\vendor\bin\pint --test <7 file yang diubah>  # passed
   ```
 - **Unresolved:**
-  - **Aktifkan `extension=zip` di `C:\xampp\php\php.ini` + restart** agar fitur ZIP jalan di lokal (tanpa itu muncul fallback pesan "Fitur ZIP belum tersedia — unduh satu per satu").
+  - **Aktifkan `extension=zip` di `C:\xampp\php\php.ini` + restart** agar fitur ZIP jalan di lokal (tanpa itu muncul fallback pesan "Fitur ZIP belum tersedia — unduh satu per satu"). **(RESOLVED 2026-10-24 via Laragon, bukan XAMPP — `extension=zip` aktif di `C:\Laragon\bin\php\php-8.3.28-Win32-vs16-x64\php.ini`; instruksi XAMPP di atas sudah tidak berlaku.)**
   - Verifikasi manual browser: unduh file via signed link dari halaman pantau + WA notif end-to-end dengan gateway Fonnte asli belum dijalankan.
   - Sisa audit P2 masih terbuka: route `track.lookup` tidak dipakai FE, dua link PDF redundan, prop legacy `invoice`/`paymentUrl`, log lookup gagal + limit per-code; P1 sisa: refresh setelah bayar, ringkasan pembayaran, countdown token, tombol salin kode/link, stepper status.
 
